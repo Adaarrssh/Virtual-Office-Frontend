@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-User A-Frame Office</title>
+
+    <!-- Tailwind CSS (for button styling) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- A-Frame CDN -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+    <!-- A-Frame EXTRAS (movement-controls के लिए) -->
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+
+    <!-- Firebase SDKs (real-time sync के लिए) -->
+    <script type="module">
+      // Firebase modules को window object पर expose करते हैं
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+      import {
+        getAuth,
+        signInAnonymously,
+        signInWithCustomToken,
+      } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+      // Only necessary Firestore imports are kept
+      import {
+        getFirestore,
+        onSnapshot,
+        doc,
+        setDoc,
+        collection,
+        setLogLevel,
+        getDoc,
+      } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+      window.firebase = {
+        initializeApp,
+        getAuth,
+        signInAnonymously,
+        signInWithCustomToken,
+        getFirestore,
+        onSnapshot,
+        doc,
+        setDoc,
+        collection,
+        setLogLevel,
+        getDoc,
+      };
+      window.firebase.setLogLevel("debug");
+    </script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
+      body {
+        margin: 0;
+        font-family: "Inter", sans-serif;
+        background-color: #ececec;
+      }
+
+      /* Camera Button Style: Fixed bottom-left */
+      #control-buttons {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      .control-button {
+        pointer-events: auto;
+        background: #4f46e5;
+        color: white;
+        padding: 10px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        border: none;
+        cursor: pointer;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s ease;
+      }
+
+      .control-button:hover {
+        background: #4338ca;
+        transform: scale(1.1);
+      }
+
+      /* Make canvas responsive */
+      a-scene {
+        height: 100vh;
+        width: 100vw;
+      }
+
+      /* Hidden UI for Status/User Info */
+      #user-info,
+      #total-users,
+      #ui-overlay {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 2D UI Overlay (Hidden) -->
+    <div id="ui-overlay">
+      <p id="user-info"></p>
+      <p id="total-users"></p>
+    </div>
+    <!-- A-FRAME SCENE: PHYSICS REMOVED -->
+    <a-scene map-setup multiplayer-avatar>
+      <a-assets timeout="10000">
+        <!-- OFFICE ASSET REFERENCES -->
+        <a-asset-item id="workstation" src="workstation.glb"></a-asset-item>
+        <a-asset-item id="plant" src="plant.glb"></a-asset-item>
+        <a-asset-item id="beanbag" src="beanbag.glb"></a-asset-item>
+        <a-asset-item id="arcade" src="arcade.glb"></a-asset-item>
+
+        <!-- AVATAR PLACEHOLDERS -->
+        <span id="avatar1"></span><span id="avatar2"></span
+        ><span id="avatar3"></span> <span id="avatar4"></span
+        ><span id="avatar5"></span><span id="avatar6"></span>
+        <span id="avatar7"></span>
+      </a-assets>
+
+      <!-- Floor (फ़र्श) -->
+      <a-plane
+        rotation="-90 0 0"
+        width="25"
+        height="25"
+        color="#4F46E5"
+      ></a-plane>
+
+      <!-- Walls (दीवारें) -->
+      <a-box
+        position="0 2.5 -12.5"
+        depth="0.2"
+        height="5"
+        width="25"
+        color="#c9b7b1"
+      ></a-box>
+      <a-box
+        position="0 2.5 12.5"
+        depth="0.2"
+        height="5"
+        width="25"
+        color="#c5c2c7"
+      ></a-box>
+      <a-box
+        position="-12.5 2.5 0"
+        depth="25"
+        height="5"
+        width="0.2"
+        color="#c9b7b1"
+      ></a-box>
+      <a-box
+        position="12.5 2.5 0"
+        depth="25"
+        height="5"
+        width="0.2"
+        color="#c5c2c7"
+      ></a-box>
+
+      <!-- Placeholders for dynamically generated content -->
+      <a-entity id="office-objects">
+        <a-entity id="workstations"></a-entity>
+        <a-entity id="plants"></a-entity>
+        <a-entity id="beanbags"></a-entity>
+        <a-entity id="arcades"></a-entity>
+      </a-entity>
+      <a-entity id="other-users"></a-entity>
+
+      <!-- Lighting (रोशनी) -->
+      <a-entity light="type: ambient; intensity: 1.5"></a-entity>
+      <a-entity
+        light="type: directional; intensity: 0.8; castShadow: true"
+        position="2 4 2"
+      ></a-entity>
+
+      <!-- Camera/User Rig -->
+      <a-entity
+        id="user-rig"
+        position="0 0.5 5"
+        rotation="0 180 0"
+        look-controls="mouse-enabled: true"
+        wasd-controls="acceleration: 50"
+        spatial-clamping="boundary: 12.5; buffer: 0.8"
+      >
+        <a-entity
+          id="user-camera"
+          camera
+          position="0 2.5 3"
+          <!--
+          3rd-Person
+          Position
+          (relative
+          to
+          rig)
+          --
+        >
+          ></a-entity
+        >
+
+        <!-- Local avatar Primitive Mesh -->
+        <a-entity
+          id="local-avatar-mesh"
+          scale="0.4 0.4 0.4"
+          position="0 0 0"
+          visible="true"
+          primitive-avatar
+        >
+        </a-entity>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      // --- GLOBAL VARIABLES ---
+      const appId =
+        typeof __app_id !== "undefined" ? __app_id : "default-aframe-app-id";
+      const initialAuthToken =
+        typeof __initial_auth_token !== "undefined"
+          ? __initial_auth_token
+          : null;
+
+      let db = null;
+      let auth = null;
+      let userId = null;
+      let userData = {};
+      let otherUsers = {};
+      let isThirdPerson = true; // State for camera view
+
+      // Firestore Paths
+      const USERS_COLLECTION_PATH = `/artifacts/${appId}/public/data/office_users`;
+      const PROFILE_DOC_PATH = `/artifacts/${appId}/users/`;
+
+      // Configuration
+      const AVATAR_SCALE = "0.4 0.4 0.4";
+      const AVATAR_MODELS = [
+        "#avatar1",
+        "#avatar2",
+        "#avatar3",
+        "#avatar4",
+        "#avatar5",
+        "#avatar6",
+        "#avatar7",
+      ];
+      const AVATAR_COLORS = [
+        "#3B82F6",
+        "#10B981",
+        "#F59E0B",
+        "#EF4444",
+        "#8B5CF6",
+        "#EC4899",
+        "#06B6D4",
+      ];
+      const CAMERA_3RD_PERSON_POS = "0 2.5 3";
+      const CAMERA_1ST_PERSON_POS = "0 1.6 0";
+
+      // Firebase Ready Promise
+      let isFirebaseReady = new Promise((resolve) => {
+        window.resolveFirebase = resolve;
+      });
+
+      // --- CAMERA TOGGLE LOGIC ---
+
+      function toggleCameraView() {
+        const cameraEl = document.getElementById("user-camera");
+        const avatarEl = document.getElementById("local-avatar-mesh");
+        const buttonEl = document.getElementById("camera-toggle-btn");
+
+        isThirdPerson = !isThirdPerson;
+
+        if (isThirdPerson) {
+          cameraEl.setAttribute("position", CAMERA_3RD_PERSON_POS);
+          avatarEl.setAttribute("visible", true);
+          buttonEl.textContent = "👁️"; // 3rd Person Icon
+          buttonEl.setAttribute("title", "3rd Person View");
+        } else {
+          cameraEl.setAttribute("position", CAMERA_1ST_PERSON_POS);
+          avatarEl.setAttribute("visible", false);
+          buttonEl.textContent = "👤"; // 1st Person Icon
+          buttonEl.setAttribute("title", "1st Person View");
+        }
+      }
+
+      window.addEventListener("load", () => {
+        const buttonEl = document.getElementById("camera-toggle-btn");
+        if (buttonEl) {
+          buttonEl.addEventListener("click", toggleCameraView);
+        }
+        // Toggle twice to ensure 3rd person is set correctly on load and icon is right
+        toggleCameraView();
+        toggleCameraView();
+      });
+
+      // --- UTILITY FUNCTIONS & FIREBASE SETUP (Unchanged) ---
+
+      function getRandomAvatarData() {
+        const modelIndex = Math.floor(Math.random() * AVATAR_MODELS.length);
+        return {
+          model: AVATAR_MODELS[modelIndex],
+          color: AVATAR_COLORS[modelIndex],
+        };
+      }
+
+      function getRandomName() {
+        const names = [
+          "Voyager",
+          "Explorer",
+          "Pioneer",
+          "Navigator",
+          "Comet",
+          "Orbiter",
+          "Cosmo",
+          "Mercury",
+          "Apollo",
+          "Astro",
+          "Nova",
+          "Stellar",
+        ];
+        return (
+          names[Math.floor(Math.random() * names.length)] +
+          Math.floor(Math.random() * 100)
+        );
+      }
+
+      function updateUIStatus(
+        htmlContent,
+        usersText,
+        userTextColor = "text-green-600"
+      ) {
+        const userInfoEl = document.getElementById("user-info");
+        const totalUsersEl = document.getElementById("total-users");
+        if (userInfoEl) userInfoEl.innerHTML = htmlContent;
+        if (totalUsersEl) totalUsersEl.textContent = usersText;
+      }
+
+      async function setupFirebase() {
+        const {
+          initializeApp,
+          getAuth,
+          signInWithCustomToken,
+          signInAnonymously,
+          getFirestore,
+          doc,
+          getDoc,
+          setDoc,
+        } = window.firebase;
+
+        let firebaseConfig = null;
+        if (typeof __firebase_config !== "undefined" && __firebase_config) {
+          try {
+            firebaseConfig = JSON.parse(__firebase_config);
+          } catch (e) {
+            updateUIStatus(
+              "Error: Firebase Config Invalid.",
+              "Users: Error",
+              "text-red-600"
+            );
+            return false;
+          }
+        } else {
+          updateUIStatus(
+            "Error: Firebase Config Missing.",
+            "Users: Error",
+            "text-red-600"
+          );
+          return false;
+        }
+
+        try {
+          const app = initializeApp(firebaseConfig);
+          auth = getAuth(app);
+          db = getFirestore(app);
+        } catch (error) {
+          updateUIStatus(
+            "Error: App Init Failed.",
+            "Users: Error",
+            "text-red-600"
+          );
+          return false;
+        }
+
+        try {
+          if (initialAuthToken) {
+            await signInWithCustomToken(auth, initialAuthToken);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          userId = auth.currentUser.uid;
+
+          const profileRef = doc(db, PROFILE_DOC_PATH, userId);
+          const profileSnap = await getDoc(profileRef);
+
+          let name;
+          let avatarData;
+
+          if (profileSnap.exists()) {
+            const existingData = profileSnap.data();
+            name = existingData.name;
+            avatarData = {
+              model: existingData.model,
+              color: existingData.color,
+            };
+          } else {
+            name = getRandomName();
+            avatarData = getRandomAvatarData();
+
+            await setDoc(
+              profileRef,
+              {
+                name: name,
+                model: avatarData.model,
+                color: avatarData.color,
+                createdAt: Date.now(),
+              },
+              { merge: true }
+            );
+          }
+
+          userData = {
+            id: userId,
+            name: name,
+            model: avatarData.model,
+            color: avatarData.color,
+          };
+
+          window.resolveFirebase(true);
+          return true;
+        } catch (error) {
+          updateUIStatus(
+            "Error: Authentication Failed.",
+            "Users: Error",
+            "text-red-600"
+          );
+          return false;
+        }
+      }
+
+      setupFirebase();
+      AFRAME.registerComponent("spatial-clamping", {
+        schema: {
+          boundary: { type: "number", default: 12.5 }, // Half the room size (25/2)
+          buffer: { type: "number", default: 0.8 }, // Small distance to stop before the wall
+        },
+
+        init: function () {
+          this.rig = this.el;
+          this.max = this.data.boundary - this.data.buffer;
+          this.min = -this.data.boundary + this.data.buffer;
+          // Get initial Y position from HTML (0.5) to lock height
+          this.initialY = this.rig.getAttribute("position").y;
+        },
+
+        tick: function () {
+          const currentPos = this.rig.getAttribute("position");
+
+          if (!currentPos) return;
+
+          let clamped = false;
+
+          // 1. Clamp X position (Left/Right walls)
+          if (currentPos.x > this.max) {
+            currentPos.x = this.max;
+            clamped = true;
+          } else if (currentPos.x < this.min) {
+            currentPos.x = this.min;
+            clamped = true;
+          }
+
+          // 2. Clamp Z position (Front/Back walls)
+          if (currentPos.z > this.max) {
+            currentPos.z = this.max;
+            clamped = true;
+          } else if (currentPos.z < this.min) {
+            currentPos.z = this.min;
+            clamped = true;
+          }
+
+          // 3. Y position lock
+          if (Math.abs(currentPos.y - this.initialY) > 0.01) {
+            currentPos.y = this.initialY;
+            clamped = true;
+          }
+
+          // If position was changed (clamped), update the rig's position
+          if (clamped) {
+            this.rig.setAttribute("position", currentPos);
+          }
+        },
+      });
+
+      // UPDATED: More Human-like primitive avatar
+      AFRAME.registerComponent("primitive-avatar", {
+        schema: {
+          color: { type: "color", default: "#3B82F6" },
+        },
+        init: function () {
+          const color = this.data.color;
+          const el = this.el;
+
+          // Clear previous children
+          while (el.firstChild) {
+            el.removeChild(el.firstChild);
+          }
+
+          const darkColor = "#374151"; // Dark color for nose/joints
+
+          // 1. Hips (Base of body)
+          const hips = document.createElement("a-cylinder");
+          hips.setAttribute("color", color);
+          hips.setAttribute("height", "0.5");
+          hips.setAttribute("radius", "0.4");
+          hips.setAttribute("position", "0 0.25 0");
+          el.appendChild(hips);
+
+          // 2. Torso (Upper body, smaller radius for tapering effect)
+          const torso = document.createElement("a-cylinder");
+          torso.setAttribute("color", color);
+          torso.setAttribute("height", "0.7");
+          torso.setAttribute("radius", "0.35");
+          torso.setAttribute("position", "0 0.85 0");
+          el.appendChild(torso);
+
+          // 3. Neck
+          const neck = document.createElement("a-cylinder");
+          neck.setAttribute("color", darkColor);
+          neck.setAttribute("height", "0.1");
+          neck.setAttribute("radius", "0.15");
+          neck.setAttribute("position", "0 1.25 0");
+          el.appendChild(neck);
+
+          // 4. Head (Octahedron for a stylized, geometric look)
+          const head = document.createElement("a-octahedron");
+          head.setAttribute("color", color);
+          head.setAttribute("radius", "0.35");
+          head.setAttribute("position", "0 1.5 0");
+          el.appendChild(head);
+
+          // 5. Direction Marker (Nose/Eyes placeholder)
+          const nose = document.createElement("a-cone");
+          nose.setAttribute("color", darkColor);
+          nose.setAttribute("height", "0.15");
+          nose.setAttribute("radius-bottom", "0.05");
+          nose.setAttribute("radius-top", "0");
+          nose.setAttribute("position", "0 1.5 -0.35");
+          nose.setAttribute("rotation", "90 0 0");
+          el.appendChild(nose);
+
+          // 6. Legs (Two Cylinders)
+          const legHeight = 0.5;
+          const legRadius = 0.15;
+
+          const legL = document.createElement("a-cylinder");
+          legL.setAttribute("color", color);
+          legL.setAttribute("height", legHeight);
+          legL.setAttribute("radius", legRadius);
+          legL.setAttribute("position", "-0.2 0.0 0");
+          el.appendChild(legL);
+
+          const legR = document.createElement("a-cylinder");
+          legR.setAttribute("color", color);
+          legR.setAttribute("height", legHeight);
+          legR.setAttribute("radius", legRadius);
+          legR.setAttribute("position", "0.2 0.0 0");
+          el.appendChild(legR);
+
+          // 7. Arms (Two rotated Cylinders)
+          const armLength = 0.8;
+          const armRadius = 0.1;
+
+          const armL = document.createElement("a-cylinder");
+          armL.setAttribute("color", color);
+          armL.setAttribute("height", armLength);
+          armL.setAttribute("radius", armRadius);
+          armL.setAttribute("rotation", "90 0 0");
+          armL.setAttribute("position", "-0.55 1.0 0"); // Higher position
+          el.appendChild(armL);
+
+          const armR = document.createElement("a-cylinder");
+          armR.setAttribute("color", color);
+          armR.setAttribute("height", armLength);
+          armR.setAttribute("radius", armRadius);
+          armR.setAttribute("rotation", "90 0 0");
+          armR.setAttribute("position", "0.55 1.0 0"); // Higher position
+          el.appendChild(armR);
+        },
+        // Handle updates if the color changes dynamically
+        update: function (oldData) {
+          if (oldData.color !== this.data.color) {
+            this.init(); // Reinitialize to rebuild with new color
+          }
+        },
+      });
+
+      AFRAME.registerComponent("map-setup", {
+        init: function () {
+          // Office setup logic (No static-body needed now)
+          const wsContainer = document.getElementById("workstations");
+          const wsPositions = [
+            [-6, 0, -3],
+            [-2, 0, -3],
+            [2, 0, -3],
+            [6, 0, -3],
+            [-6, 0, -7],
+            [-2, 0, -7],
+            [2, 0, -7],
+            [6, 0, -7],
+            [-4, 0, 1],
+            [0, 0, 1],
+            [4, 0, 1],
+            [-4, 0, 5],
+            [0, 0, 5],
+            [4, 0, 5],
+          ];
+
+          wsPositions.forEach((pos) => {
+            const entity = document.createElement("a-entity");
+            entity.setAttribute("gltf-model", "#workstation");
+            entity.setAttribute("position", pos.join(" "));
+            entity.setAttribute("scale", "0.5 0.5 0.5");
+            wsContainer.appendChild(entity);
+          });
+
+          const assetPositions = [
+            {
+              id: "#plant",
+              count: 10,
+              scale: "0.3 0.3 0.3",
+              containerId: "plants",
+            },
+            {
+              id: "#beanbag",
+              count: 10,
+              scale: "0.5 0.5 0.5",
+              containerId: "beanbags",
+            },
+          ];
+
+          assetPositions.forEach(({ id, count, scale, containerId }) => {
+            const container = document.getElementById(containerId);
+            for (let i = 0; i < count; i++) {
+              const randomX = Math.random() * 18 - 9;
+              const randomZ = Math.random() * 18 - 9;
+              const entity = document.createElement("a-entity");
+              entity.setAttribute("gltf-model", id);
+              entity.setAttribute("position", `${randomX} 0 ${randomZ}`);
+              entity.setAttribute("scale", scale);
+              container.appendChild(entity);
+            }
+          });
+
+          const arcadePositions = [
+            [8, 0, -9.4],
+            [6.5, 0, -9.4],
+            [5, 0, -9.4],
+          ];
+          const arcadeContainer = document.getElementById("arcades");
+          arcadePositions.forEach((pos) => {
+            const entity = document.createElement("a-entity");
+            entity.setAttribute("gltf-model", "#arcade");
+            entity.setAttribute("position", pos.join(" "));
+            entity.setAttribute("scale", "0.3 0.3 0.3");
+            entity.setAttribute("rotation", "0 0 0");
+            arcadeContainer.appendChild(entity);
+          });
+        },
+      });
+
+      AFRAME.registerComponent("multiplayer-avatar", {
+        schema: {
+          updateInterval: { type: "number", default: 100 },
+        },
+
+        init: async function () {
+          this.el.sceneEl.style.cursor = "wait";
+
+          this.lastUpdate = 0;
+          this.rig = document.getElementById("user-rig");
+          this.localAvatarMesh = document.getElementById("local-avatar-mesh");
+          this.otherUsersContainer = document.getElementById("other-users");
+
+          await isFirebaseReady;
+
+          if (!db || !userId) {
+            this.el.sceneEl.style.cursor = "default";
+            return;
+          }
+
+          this.setupAvatarAndSync();
+          this.el.sceneEl.style.cursor = "default";
+        },
+
+        setupAvatarAndSync: function () {
+          // 1. Local Avatar Mesh को कॉन्फ़िगर करें
+          this.localAvatarMesh.setAttribute("primitive-avatar", {
+            color: userData.color,
+          });
+
+          // 2. UI Update (minimal, hidden)
+          const displayModelName = userData.model.substring(1);
+          updateUIStatus(
+            `
+                    You (Avatar: ${displayModelName} / ${userData.color}): 
+                    ${userData.name} (${userId.substring(0, 4)}...)
+                `,
+            "Users: 1",
+            "text-green-600"
+          );
+
+          // 3. Start Position Listeners and Syncing
+          this.startPositionListeners();
+        },
+
+        tick: function (time, delta) {
+          if (!db || !userId) return;
+
+          if (time - this.lastUpdate > this.data.updateInterval) {
+            this.lastUpdate = time;
+            this.updatePosition();
+          }
+        },
+
+        updatePosition: async function () {
+          if (!db || !userId) return;
+          const { doc, setDoc } = window.firebase;
+
+          const pos = this.rig.getAttribute("position");
+          const rot = this.rig.getAttribute("rotation");
+
+          if (!pos || !rot) return;
+
+          const userRef = doc(db, USERS_COLLECTION_PATH, userId);
+
+          const positionData = {
+            x: parseFloat(pos.x.toFixed(2)),
+            y: parseFloat(pos.y.toFixed(2)),
+            z: parseFloat(pos.z.toFixed(2)),
+            rot_y: parseFloat(rot.y.toFixed(2)),
+            name: userData.name,
+            model: userData.model,
+            color: userData.color,
+            updatedAt: Date.now(),
+          };
+
+          await setDoc(userRef, positionData, { merge: true }).catch((err) => {
+            console.error("Error setting user position to Firestore:", err);
+          });
+        },
+
+        startPositionListeners: function () {
+          if (!db) return;
+          const { onSnapshot, collection } = window.firebase;
+
+          const usersCollection = collection(db, USERS_COLLECTION_PATH);
+
+          const unsubscribe = onSnapshot(
+            usersCollection,
+            (snapshot) => {
+              let activeUsers = 0;
+
+              snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const otherUserId = change.doc.id;
+
+                if (!data.model || !data.name || !data.color) return;
+
+                if (otherUserId === userId) {
+                  activeUsers++;
+                  return;
+                }
+
+                if (change.type === "added" || change.type === "modified") {
+                  activeUsers++;
+                  this.updateOtherUserEntity(otherUserId, data);
+                } else if (change.type === "removed") {
+                  this.removeOtherUserEntity(otherUserId);
+                }
+              });
+
+              // Update hidden total-users element
+              const totalUsersEl = document.getElementById("total-users");
+              if (totalUsersEl)
+                totalUsersEl.textContent = `Users: ${activeUsers}`;
+            },
+            (error) => {
+              console.error("Error fetching users snapshot:", error);
+              updateUIStatus(
+                "Error: Live Data Disconnected.",
+                "Users: Disconnected",
+                "text-red-600"
+              );
+            }
+          );
+        },
+
+        updateOtherUserEntity: function (id, data) {
+          const { x, y, z, rot_y, name, model, color } = data;
+          let userEntity = otherUsers[id];
+          const yPos = y > 0.05 ? y : 0;
+
+          if (!userEntity) {
+            userEntity = document.createElement("a-entity");
+            userEntity.setAttribute("id", `user-${id}`);
+            userEntity.setAttribute("class", "remote-avatar");
+
+            const avatar = document.createElement("a-entity");
+            avatar.setAttribute("primitive-avatar", { color: color });
+            avatar.setAttribute("scale", AVATAR_SCALE);
+            avatar.setAttribute("position", "0 0 0");
+            userEntity.appendChild(avatar);
+
+            // Name Tag (Visible in 3D world above avatar)
+            const nameTag = document.createElement("a-text");
+            const displayModelName = model.substring(1);
+            nameTag.setAttribute("value", `${name} (${id.substring(0, 4)}...)`);
+            nameTag.setAttribute("width", "5");
+            nameTag.setAttribute("align", "center");
+            nameTag.setAttribute("color", "black");
+            nameTag.setAttribute("position", "0 2.2 0");
+            nameTag.setAttribute("rotation", "0 180 0");
+            userEntity.appendChild(nameTag);
+
+            this.otherUsersContainer.appendChild(userEntity);
+            otherUsers[id] = userEntity;
+          }
+
+          const avatarMesh = userEntity.querySelector("[primitive-avatar]");
+          if (avatarMesh) {
+            const currentColor =
+              avatarMesh.getAttribute("primitive-avatar").color;
+            if (currentColor !== color) {
+              avatarMesh.setAttribute("primitive-avatar", { color: color });
+            }
+          }
+
+          userEntity.setAttribute("position", { x: x, y: yPos, z: z });
+          userEntity.setAttribute("rotation", { x: 0, y: rot_y, z: 0 });
+        },
+
+        removeOtherUserEntity: function (id) {
+          const entity = otherUsers[id];
+          if (entity) {
+            entity.parentNode.removeChild(entity);
+            delete otherUsers[id];
+          }
+        },
+      });
+    </script>
+  </body>
+</html>
