@@ -7,6 +7,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import API from "../api";
+import "../styles/login.css";
 
 const LoginPage = ({ onSuccessfulLogin }) => {
   const [username, setUsername] = useState("");
