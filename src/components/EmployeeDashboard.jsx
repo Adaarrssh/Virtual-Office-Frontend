@@ -7,7 +7,7 @@ import MeetingsPanel from "./MeetingsPanel";
 import TeamsPanel from "./TeamsPanel";
 import "../styles/dashboard.css";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API = "https://virtual-office-backend-3e1e.onrender.com";
 
 const EmployeeDashboard = ({ onLogout }) => {
   const [activeSection, setActiveSection] = useState(
@@ -35,7 +35,7 @@ const EmployeeDashboard = ({ onLogout }) => {
       localStorage.setItem("user", JSON.stringify(data));
     } catch (err) {
       console.error("User fetch error:", err);
-      setEmployeeData({});
+      setEmployeeData(null);
     }
   }, [token]);
 
@@ -49,7 +49,7 @@ const EmployeeDashboard = ({ onLogout }) => {
     localStorage.setItem("activeSection", activeSection);
   }, [activeSection]);
 
-  if (!employeeData) {
+  if (!employeeData || !employeeData.name) {
     return <div className="dashboard">Loading...</div>;
   }
 

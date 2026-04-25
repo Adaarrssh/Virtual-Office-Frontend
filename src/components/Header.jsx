@@ -2,9 +2,9 @@ import React from "react";
 import { LogOut, Map } from "lucide-react";
 
 const Header = ({ user, onSelect, onLogout }) => {
-  if (!user) return null;
+  if (!user || !user.name) return null;
 
-  const name = user.name || "User";
+  const name = user?.name ? user.name : "Loading...";
 
   // 🔥 FIXED AVATAR (CLOUDINARY SUPPORT)
   const avatar = user.profileUrl

@@ -9,7 +9,7 @@ import ReportsPanel from "./ReportsPanel";
 import CreateEmployeePanel from "./CreateEmployeePanel";
 import "../styles/dashboard.css";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const API = "https://virtual-office-backend-3e1e.onrender.com";
 
 const ManagerDashboard = ({ onLogout }) => {
   const [activeSection, setActiveSection] = useState(
@@ -37,7 +37,7 @@ const ManagerDashboard = ({ onLogout }) => {
       localStorage.setItem("user", JSON.stringify(data));
     } catch (err) {
       console.error("User fetch error:", err);
-      setManagerData({});
+      setManagerData(null);
     }
   }, [token]);
 
@@ -51,7 +51,7 @@ const ManagerDashboard = ({ onLogout }) => {
     localStorage.setItem("activeSection", activeSection);
   }, [activeSection]);
 
-  if (!managerData) {
+  if (!managerData || !managerData.name) {
     return <div className="dashboard">Loading...</div>;
   }
 
