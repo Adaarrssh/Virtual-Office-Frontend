@@ -3,7 +3,6 @@ import API from "../api";
 
 const CreateEmployeePanel = () => {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -11,7 +10,7 @@ const CreateEmployeePanel = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name.trim() || !email.trim() || !password.trim()) {
+    if (!name.trim() || !password.trim()) {
       setMessage("All fields required");
       return;
     }
@@ -22,7 +21,6 @@ const CreateEmployeePanel = () => {
     try {
       const res = await API.post("/users/create-employee", {
         name: name.trim(),
-        email: email.trim(),
         password,
       });
 
@@ -30,7 +28,6 @@ const CreateEmployeePanel = () => {
 
       setMessage(`Employee created. Email: ${data.email}`);
       setName("");
-      setEmail("");
       setPassword("");
     } catch (err) {
       console.error(err);
