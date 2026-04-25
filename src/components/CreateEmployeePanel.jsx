@@ -56,14 +56,6 @@ const CreateEmployeePanel = () => {
         />
 
         <input
-          type="email"
-          placeholder="Employee Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-
-        <input
           type="password"
           placeholder="Employee Password"
           value={password}
