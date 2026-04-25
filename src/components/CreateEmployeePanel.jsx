@@ -1,18 +1,18 @@
 import React, { useState } from "react";
+import API from "../api";
 
 const CreateEmployeePanel = () => {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const token = localStorage.getItem("token");
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name.trim()) {
-      setMessage("Employee name required");
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setMessage("All fields required");
       return;
     }
 
@@ -20,33 +20,23 @@ const CreateEmployeePanel = () => {
     setMessage("");
 
     try {
-      const res = await fetch(
-        "http://localhost:5000/api/users/create-employee",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            password,
-          }),
-        },
-      );
+      const res = await API.post("/users/create-employee", {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
 
-      const data = await res.json();
+      const data = res.data;
 
-      if (res.ok) {
-        setMessage(`Employee created. Email: ${data.email}`);
-        setName("");
-        setPassword("");
-      } else {
-        setMessage(data.message || "Failed to create employee");
-      }
+      setMessage(`Employee created. Email: ${data.email}`);
+      setName("");
+      setEmail("");
+      setPassword("");
     } catch (err) {
       console.error(err);
-      setMessage("Server error while creating employee");
+      setMessage(
+        err?.response?.data?.message || "Server error while creating employee",
+      );
     }
 
     setLoading(false);
@@ -62,6 +52,14 @@ const CreateEmployeePanel = () => {
           placeholder="Employee Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          required
+        />
+
+        <input
+          type="email"
+          placeholder="Employee Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
