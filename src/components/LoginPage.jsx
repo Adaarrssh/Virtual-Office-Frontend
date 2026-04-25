@@ -18,62 +18,77 @@ const LoginPage = ({ onSuccessfulLogin }) => {
     setError("");
 
     if (!username.trim() || !password.trim()) {
-      setError("Username aur password dono zaroori hain.");
+      setError("Email aur password dono zaroori hain.");
       return;
     }
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const mockUsername = username.toLowerCase();
-    let userRole = null;
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: username,
+          password: password,
+        }),
+      });
 
-    if (mockUsername === "manager") {
-      userRole = "manager";
-    } else if (mockUsername === "employee") {
-      userRole = "employee";
-    } else {
-      setError(
-        `Username '${username}' mila nahi. Kripya 'manager' ya 'employee' use karein.`
-      );
-    }
+      let data = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
 
-    if (userRole) {
-      onSuccessfulLogin(userRole);
+      if (!res.ok || !data?.token || !data?.user) {
+        setError(data?.message || "Invalid login response from server");
+        setIsSubmitting(false);
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      if (data.user?.role) {
+        onSuccessfulLogin(data.user.role);
+      } else {
+        setError("User role missing");
+      }
+    } catch {
+      setError("Server error. Please try again.");
     }
 
     setIsSubmitting(false);
   };
 
-  const accentColor =
-    username.toLowerCase() === "manager" ? "#4f46e5" : "#10b981"; // Indigo or Emerald
-  const buttonClass =
-    username.toLowerCase() === "manager" ? "btn-manager" : "btn-employee";
+  const accentColor = username.toLowerCase().includes("manager")
+    ? "#4f46e5"
+    : "#10b981";
+
+  const buttonClass = username.toLowerCase().includes("manager")
+    ? "btn-manager"
+    : "btn-employee";
 
   return (
-    // Main container
     <div className="login-container">
-      {/* Login Card */}
-      <div
-        className="login-card"
-        // Inline style to dynamically change the border top color based on user input
-        style={{ "--accent-color": accentColor }}
-      >
+      <div className="login-card" style={{ "--accent-color": accentColor }}>
         <BriefcaseBusiness className="icon-main animate-bounce-slow" />
 
         <h1 className="title">Office Portal Access</h1>
 
         <p className="subtitle">
-          Securely log in to your **Virtual Office Platform** account.
+          Securely log in to your Virtual Office Platform account.
         </p>
 
         <form onSubmit={handleSubmit} className="form-group">
-          {/* Username Input */}
           <div className="input-wrapper">
             <User className="input-icon" />
             <input
               type="text"
-              placeholder="Username (e.g., 'manager' or 'employee')"
+              placeholder="Company Email (e.g. emp.EMP001@company.com)"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="input-field"
@@ -82,12 +97,11 @@ const LoginPage = ({ onSuccessfulLogin }) => {
             />
           </div>
 
-          {/* Password Input */}
           <div className="input-wrapper">
             <Lock className="input-icon" />
             <input
               type="password"
-              placeholder="Password (Koi bhi text)"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field"
@@ -96,7 +110,6 @@ const LoginPage = ({ onSuccessfulLogin }) => {
             />
           </div>
 
-          {/* Error Message Panel */}
           {error && (
             <div className="error-message animate-fadeIn">
               <AlertCircle className="error-icon" />
@@ -104,7 +117,6 @@ const LoginPage = ({ onSuccessfulLogin }) => {
             </div>
           )}
 
-          {/* Submit Button */}
           <button
             type="submit"
             className={`submit-btn ${buttonClass}`}
@@ -120,10 +132,11 @@ const LoginPage = ({ onSuccessfulLogin }) => {
         </form>
 
         <p className="tip-text">
-          <strong>Tip:</strong> Use 'manager' or 'employee' as the username. The
-          password can be any text.
+          <strong>Tip:</strong> Use your company email and password provided by
+          your manager.
         </p>
       </div>
+
       <style jsx="true">{`
         :root {
           --color-indigo: #4f46e5;
@@ -136,20 +149,22 @@ const LoginPage = ({ onSuccessfulLogin }) => {
           display: flex;
           justify-content: center;
           align-items: center;
-          background-color: #1f2937; /* Equivalent to bg-gray-800 */
+          background-color: #1f2937;
           padding: 16px;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          font-family:
+            -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
             "Helvetica Neue", Arial, sans-serif;
         }
 
         .login-card {
-          --accent-color: #4f46e5; /* Default accent */
+          --accent-color: #4f46e5;
           max-width: 448px;
           width: 100%;
           background-color: white;
           padding: 48px;
           border-radius: 16px;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2),
+          box-shadow:
+            0 20px 25px -5px rgba(0, 0, 0, 0.2),
             0 10px 10px -5px rgba(0, 0, 0, 0.04);
           text-align: center;
           transition: transform 0.3s ease-in-out;
@@ -204,7 +219,7 @@ const LoginPage = ({ onSuccessfulLogin }) => {
 
         .input-field {
           width: 100%;
-          padding: 14px 16px 14px 40px; /* pl-10 */
+          padding: 14px 16px 14px 40px;
           border: 1px solid #d1d5db;
           border-radius: 12px;
           font-size: 16px;
@@ -232,7 +247,6 @@ const LoginPage = ({ onSuccessfulLogin }) => {
           width: 16px;
           height: 16px;
           margin-right: 8px;
-          flex-shrink: 0;
         }
 
         .submit-btn {
@@ -243,42 +257,18 @@ const LoginPage = ({ onSuccessfulLogin }) => {
           border-radius: 12px;
           border: none;
           cursor: pointer;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
           display: flex;
           justify-content: center;
           align-items: center;
           margin-left: 35px;
         }
 
-        .submit-btn:hover {
-          box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
-        }
-        .submit-btn:active {
-          transform: scale(0.98);
-        }
-        .submit-btn:focus {
-          outline: none;
-          box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.5); /* Default focus ring */
-        }
-
-        /* Manager Button Styling */
         .btn-manager {
           background-color: var(--color-indigo);
         }
-        .btn-manager:hover {
-          background-color: #4338ca;
-        }
 
-        /* Employee Button Styling */
         .btn-employee {
           background-color: var(--color-emerald);
-        }
-        .btn-employee:hover {
-          background-color: #059669;
-        }
-        .btn-employee:focus {
-          box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.5); /* Emerald focus ring */
         }
 
         .btn-icon {
@@ -292,41 +282,8 @@ const LoginPage = ({ onSuccessfulLogin }) => {
           font-size: 12px;
           color: #9ca3af;
         }
-        .tip-text strong {
-          color: #4b5563;
-        }
 
-        /* Animations */
-        @keyframes bounce-slow {
-          0%,
-          100% {
-            transform: translateY(-5%);
-          }
-          50% {
-            transform: translateY(5%);
-          }
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 3s infinite ease-in-out;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-
-        /* Spinner (Loader) */
         .spinner {
-          display: inline-block;
           width: 20px;
           height: 20px;
           border: 2px solid white;
@@ -335,6 +292,7 @@ const LoginPage = ({ onSuccessfulLogin }) => {
           animation: spin 0.8s linear infinite;
           margin-right: 8px;
         }
+
         @keyframes spin {
           0% {
             transform: rotate(0deg);

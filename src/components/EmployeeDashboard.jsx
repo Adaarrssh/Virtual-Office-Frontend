@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import EmployeeCard from "./EmployeeCard";
@@ -7,18 +7,51 @@ import MeetingsPanel from "./MeetingsPanel";
 import TeamsPanel from "./TeamsPanel";
 import "../styles/dashboard.css";
 
-// ✅ Accept the onLogout prop from App.js
-const EmployeeDashboard = ({ onLogout }) => {
-  const [activeSection, setActiveSection] = useState("Home");
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-  const employeeData = {
-    name: "Adarsh",
-    email: "adarsh@badmashi.com",
-    title: "Software Engineer",
-    joined: 2025,
-    status: "active",
-    profileUrl: "https://i.pravatar.cc/100?img=3",
-  };
+const EmployeeDashboard = ({ onLogout }) => {
+  const [activeSection, setActiveSection] = useState(
+    localStorage.getItem("activeSection") || "Home",
+  );
+
+  const [employeeData, setEmployeeData] = useState(null);
+  const token = localStorage.getItem("token");
+
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch user");
+      }
+
+      const data = await res.json();
+
+      setEmployeeData(data);
+      localStorage.setItem("user", JSON.stringify(data));
+    } catch (err) {
+      console.error("User fetch error:", err);
+      setEmployeeData({});
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchUser();
+    }
+  }, [fetchUser, token]);
+
+  useEffect(() => {
+    localStorage.setItem("activeSection", activeSection);
+  }, [activeSection]);
+
+  if (!employeeData) {
+    return <div className="dashboard">Loading...</div>;
+  }
 
   return (
     <div className="dashboard">
@@ -27,8 +60,8 @@ const EmployeeDashboard = ({ onLogout }) => {
         activeSection={activeSection}
         role="employee"
       />
+
       <div className="main">
-        {/* ✅ Pass the onLogout prop down to the Header */}
         <Header
           user={employeeData}
           onSelect={setActiveSection}
@@ -38,23 +71,34 @@ const EmployeeDashboard = ({ onLogout }) => {
         {activeSection === "Home" && (
           <>
             <div className="card">
-              <EmployeeCard employee={employeeData} />
+              <EmployeeCard
+                employee={employeeData}
+                isSelf={true}
+                refreshUser={fetchUser}
+              />
             </div>
+
             <div className="panel">
               <TasksPanel role="employee" limit />
             </div>
+
             <div className="panel">
               <MeetingsPanel limit />
             </div>
+
             <div className="panel">
-              <TeamsPanel showActions={false} limit />
+              <TeamsPanel limit />
             </div>
           </>
         )}
 
         {activeSection === "Profile" && (
           <div className="card">
-            <EmployeeCard employee={employeeData} />
+            <EmployeeCard
+              employee={employeeData}
+              isSelf={true}
+              refreshUser={fetchUser}
+            />
           </div>
         )}
 
@@ -72,7 +116,7 @@ const EmployeeDashboard = ({ onLogout }) => {
 
         {activeSection === "Team" && (
           <div className="panel">
-            <TeamsPanel showActions />
+            <TeamsPanel />
           </div>
         )}
 
@@ -92,6 +136,7 @@ const EmployeeDashboard = ({ onLogout }) => {
                 ← Back to Dashboard
               </button>
             </div>
+
             <iframe
               src={process.env.PUBLIC_URL + "/office.space/index.html"}
               title="Virtual Map"

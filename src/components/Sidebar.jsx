@@ -5,7 +5,7 @@ const Sidebar = ({ onSelect, activeSection, role }) => {
   const navItems =
     role === "manager"
       ? ["Home", "Tasks", "Meetings", "Team", "Reports", "Settings"]
-      : ["Home", "Profile", "Tasks", "Meetings", "Team", "Settings"];
+      : ["Home", "Tasks", "Meetings", "Team", "Settings"];
 
   return (
     <aside className="sidebar">

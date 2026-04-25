@@ -1,64 +1,125 @@
-import React, { useState, useEffect } from "react";
-import allTasks from "../data/tasks";
-import allEmployees from "../data/employee.js";
+import React, { useState, useEffect, useCallback } from "react";
 
 const TasksPanel = ({ role, limit }) => {
   const [tasks, setTasks] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [notesMap, setNotesMap] = useState({});
+
   const [newTask, setNewTask] = useState({
     title: "",
-    assignee: "",
-    status: "Pending",
+    assignedTo: "",
   });
-  const [isSmallScreen, setIsSmallScreen] = useState(window.innerWidth < 768);
 
-  const currentUser = "Priya";
+  const token = localStorage.getItem("token");
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/tasks", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch tasks error:", err);
+      setTasks([]);
+    }
+  }, [token]); // ✅ FIXED (removed role)
+
+  const fetchTeam = useCallback(async () => {
+    if (role !== "manager") return;
+
+    try {
+      const res = await fetch("http://localhost:5000/api/users/team", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setEmployees(
+        Array.isArray(data) ? data.filter((u) => u.role === "employee") : [],
+      );
+    } catch (err) {
+      console.error("Fetch team error:", err);
+      setEmployees([]);
+    }
+  }, [token, role]);
 
   useEffect(() => {
-    if (role === "employee") {
-      const employeeTasks = allTasks.filter(
-        (task) => task.assignee === currentUser
-      );
-      setTasks(employeeTasks);
-    } else {
-      setTasks(allTasks);
-    }
+    fetchTasks();
+    fetchTeam();
 
-    const handleResize = () => {
-      setIsSmallScreen(window.innerWidth < 768);
-    };
+    const interval = setInterval(fetchTasks, 3000);
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [role, currentUser]);
+    return () => clearInterval(interval);
+  }, [fetchTasks, fetchTeam]);
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
-    if (newTask.title && newTask.assignee) {
-      const newTaskId = Math.max(...allTasks.map((t) => t.id), 0) + 1;
-      const taskToAdd = { ...newTask, id: newTaskId };
-      allTasks.push(taskToAdd);
-      setTasks([...tasks, taskToAdd]);
+
+    if (!newTask.title || !newTask.assignedTo) return;
+
+    try {
+      await fetch("http://localhost:5000/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(newTask),
+      });
+
+      setNewTask({ title: "", assignedTo: "" });
       setShowForm(false);
-      setNewTask({ title: "", assignee: "", status: "Pending" });
+      fetchTasks();
+    } catch (err) {
+      console.error("Add task error:", err);
+    }
+  };
+
+  const updateTask = async (id, status, notes) => {
+    try {
+      await fetch(`http://localhost:5000/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status, notes }),
+      });
+
+      fetchTasks();
+    } catch (err) {
+      console.error("Update task error:", err);
+    }
+  };
+
+  const deleteTask = async (id) => {
+    try {
+      await fetch(`http://localhost:5000/api/tasks/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      fetchTasks();
+    } catch (err) {
+      console.error("Delete task error:", err);
     }
   };
 
   const visibleTasks = limit ? tasks.slice(0, 5) : tasks;
 
-  // Added memoization for filtering to improve performance
-  const filteredEmployees = React.useMemo(() => {
-    const input = newTask.assignee.toLowerCase().trim();
-    if (input.length < 1) return []; // Return empty array if input is empty
-    return allEmployees.filter((employee) =>
-      employee.name.toLowerCase().includes(input)
-    );
-  }, [newTask.assignee]);
-
   return (
     <div className="tasks-panel">
       <div className="panel-header">
         <h3 className="panel-title">Tasks</h3>
+
         {role === "manager" && (
           <button
             className="add-task-btn"
@@ -79,36 +140,24 @@ const TasksPanel = ({ role, limit }) => {
             required
           />
 
-          <div className="assign-dropdown">
-            <input
-              type="text"
-              placeholder="Assign to (Employee Name)"
-              value={newTask.assignee}
-              onChange={(e) =>
-                setNewTask({ ...newTask, assignee: e.target.value })
-              }
-              required
-              autoComplete="off"
-            />
+          <select
+            value={newTask.assignedTo}
+            onChange={(e) =>
+              setNewTask({ ...newTask, assignedTo: e.target.value })
+            }
+            required
+          >
+            <option value="">Assign Employee</option>
 
-            {newTask.assignee && (
-              <ul className="dropdown-list">
-                {filteredEmployees.map((employee) => (
-                  <li
-                    key={employee.id} // Assuming each employee has a unique 'id'
-                    onClick={() =>
-                      setNewTask({ ...newTask, assignee: employee.name })
-                    }
-                  >
-                    {employee.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+            {employees.map((emp) => (
+              <option key={emp._id} value={emp._id}>
+                {emp.name}
+              </option>
+            ))}
+          </select>
 
           <button type="submit" className="submit-task-btn">
-            Add Task
+            Assign
           </button>
         </form>
       )}
@@ -116,18 +165,73 @@ const TasksPanel = ({ role, limit }) => {
       {visibleTasks.length > 0 ? (
         <ul className="tasks-list">
           {visibleTasks.map((task) => (
-            <li key={task.id} className="task-item">
+            <li key={task._id} className="task-item">
               <div className="task-info">
                 <span className="task-title">{task.title}</span>
-                {!isSmallScreen && role === "manager" && (
+
+                {role === "manager" && (
                   <span className="task-assignee">
-                    Assigned to: {task.assignee}
+                    Assigned to: {task.assignedTo?.name}
                   </span>
                 )}
+
+                {task.notes && (
+                  <div style={{ fontSize: "12px", color: "#666" }}>
+                    Notes: {task.notes}
+                  </div>
+                )}
               </div>
-              <span className={`task-status ${task.status.toLowerCase()}`}>
-                {task.status}
-              </span>
+
+              {role === "employee" ? (
+                <div
+                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
+                >
+                  <select
+                    value={task.status}
+                    onChange={(e) =>
+                      updateTask(task._id, e.target.value, task.notes)
+                    }
+                  >
+                    <option>Not Completed</option>
+                    <option>In Progress</option>
+                    <option>Completed</option>
+                  </select>
+
+                  <textarea
+                    placeholder="Add notes..."
+                    value={notesMap[task._id] ?? task.notes ?? ""}
+                    onChange={(e) =>
+                      setNotesMap({
+                        ...notesMap,
+                        [task._id]: e.target.value,
+                      })
+                    }
+                  />
+
+                  <button
+                    onClick={() =>
+                      updateTask(task._id, task.status, notesMap[task._id])
+                    }
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <span
+                    style={{
+                      color: task.status === "Completed" ? "green" : "orange",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {task.status}
+                  </span>
+
+                  {task.status === "Completed" && (
+                    <button onClick={() => deleteTask(task._id)}>Remove</button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

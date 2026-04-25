@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import EmployeeCard from "./EmployeeCard";
@@ -6,21 +6,54 @@ import TasksPanel from "./TasksPanel";
 import MeetingsPanel from "./MeetingsPanel";
 import TeamsPanel from "./TeamsPanel";
 import ReportsPanel from "./ReportsPanel";
+import CreateEmployeePanel from "./CreateEmployeePanel";
 import "../styles/dashboard.css";
 
+const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
+
 const ManagerDashboard = ({ onLogout }) => {
-  const [activeSection, setActiveSection] = useState("Home");
+  const [activeSection, setActiveSection] = useState(
+    localStorage.getItem("activeSection") || "Home",
+  );
 
-  const managerData = {
-    name: "Manager John",
-    email: "manager@company.com",
-    title: "Project Manager",
-    joined: 2023,
-    status: "active",
-    profileUrl: "https://i.pravatar.cc/100?img=5",
-  };
+  const [managerData, setManagerData] = useState(null);
+  const token = localStorage.getItem("token");
 
-  const currentUserRole = "manager";
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/users/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch user");
+      }
+
+      const data = await res.json();
+
+      setManagerData(data);
+      localStorage.setItem("user", JSON.stringify(data));
+    } catch (err) {
+      console.error("User fetch error:", err);
+      setManagerData({});
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetchUser();
+    }
+  }, [fetchUser, token]);
+
+  useEffect(() => {
+    localStorage.setItem("activeSection", activeSection);
+  }, [activeSection]);
+
+  if (!managerData) {
+    return <div className="dashboard">Loading...</div>;
+  }
 
   return (
     <div className="dashboard">
@@ -40,24 +73,38 @@ const ManagerDashboard = ({ onLogout }) => {
         {activeSection === "Home" && (
           <>
             <div className="card">
-              <EmployeeCard employee={managerData} />
+              <EmployeeCard
+                employee={managerData}
+                isSelf={true}
+                refreshUser={fetchUser}
+              />
             </div>
+
+            <div className="panel">
+              <CreateEmployeePanel />
+            </div>
+
             <div className="panel">
               <TasksPanel role="manager" limit />
             </div>
+
             <div className="panel">
               <MeetingsPanel limit />
             </div>
+
             <div className="panel">
-              {/* ✅ Corrected: Add the 'role' prop here for the home view */}
-              <TeamsPanel role={currentUserRole} showActions limit />
+              <TeamsPanel limit />
             </div>
           </>
         )}
 
         {activeSection === "Profile" && (
           <div className="card">
-            <EmployeeCard employee={managerData} />
+            <EmployeeCard
+              employee={managerData}
+              isSelf={true}
+              refreshUser={fetchUser}
+            />
           </div>
         )}
 
@@ -75,8 +122,7 @@ const ManagerDashboard = ({ onLogout }) => {
 
         {activeSection === "Team" && (
           <div className="panel">
-            {/* ✅ Corrected: Add the 'role' prop here for the full team view */}
-            <TeamsPanel role={currentUserRole} showActions />
+            <TeamsPanel />
           </div>
         )}
 
@@ -102,6 +148,7 @@ const ManagerDashboard = ({ onLogout }) => {
                 ← Back to Dashboard
               </button>
             </div>
+
             <iframe
               src={process.env.PUBLIC_URL + "/office.space/index.html"}
               title="Virtual Map"
