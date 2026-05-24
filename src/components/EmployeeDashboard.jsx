@@ -7,7 +7,9 @@ import MeetingsPanel from "./MeetingsPanel";
 import TeamsPanel from "./TeamsPanel";
 import "../styles/dashboard.css";
 
-const API = "https://virtual-office-backend-3e1e.onrender.com";
+const API =
+  process.env.REACT_APP_API_URL ||
+  "https://virtual-office-backend-3e1e.onrender.com";
 
 const EmployeeDashboard = ({ onLogout }) => {
   const [activeSection, setActiveSection] = useState(
@@ -15,15 +17,26 @@ const EmployeeDashboard = ({ onLogout }) => {
   );
 
   const [employeeData, setEmployeeData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const token = localStorage.getItem("token");
 
   const fetchUser = useCallback(async () => {
     try {
+      if (!token) {
+        setEmployeeData(null);
+        return;
+      }
+
       const res = await fetch(`${API}/api/users/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (res.status === 401) {
+        throw new Error("Unauthorized");
+      }
 
       if (!res.ok) {
         throw new Error("Failed to fetch user");
@@ -35,22 +48,36 @@ const EmployeeDashboard = ({ onLogout }) => {
       localStorage.setItem("user", JSON.stringify(data));
     } catch (err) {
       console.error("User fetch error:", err);
-      setEmployeeData(null);
+
+      if (err.message === "Unauthorized") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        setEmployeeData(null);
+
+        if (onLogout) {
+          onLogout();
+        }
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [token]);
+  }, [token, onLogout]);
 
   useEffect(() => {
-    if (token) {
-      fetchUser();
-    }
-  }, [fetchUser, token]);
+    fetchUser();
+  }, [fetchUser]);
 
   useEffect(() => {
     localStorage.setItem("activeSection", activeSection);
   }, [activeSection]);
 
-  if (!employeeData || !employeeData.name) {
+  if (loading) {
     return <div className="dashboard">Loading...</div>;
+  }
+
+  if (!employeeData || !employeeData.name) {
+    return <div className="dashboard">Unable to load dashboard.</div>;
   }
 
   return (

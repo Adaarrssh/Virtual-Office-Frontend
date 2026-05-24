@@ -9,7 +9,9 @@ import ReportsPanel from "./ReportsPanel";
 import CreateEmployeePanel from "./CreateEmployeePanel";
 import "../styles/dashboard.css";
 
-const API = "https://virtual-office-backend-3e1e.onrender.com";
+const API =
+  process.env.REACT_APP_API_URL ||
+  "https://virtual-office-backend-3e1e.onrender.com";
 
 const ManagerDashboard = ({ onLogout }) => {
   const [activeSection, setActiveSection] = useState(
@@ -17,15 +19,26 @@ const ManagerDashboard = ({ onLogout }) => {
   );
 
   const [managerData, setManagerData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   const token = localStorage.getItem("token");
 
   const fetchUser = useCallback(async () => {
     try {
+      if (!token) {
+        setManagerData(null);
+        return;
+      }
+
       const res = await fetch(`${API}/api/users/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
+
+      if (res.status === 401) {
+        throw new Error("Unauthorized");
+      }
 
       if (!res.ok) {
         throw new Error("Failed to fetch user");
@@ -37,22 +50,36 @@ const ManagerDashboard = ({ onLogout }) => {
       localStorage.setItem("user", JSON.stringify(data));
     } catch (err) {
       console.error("User fetch error:", err);
-      setManagerData(null);
+
+      if (err.message === "Unauthorized") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        setManagerData(null);
+
+        if (onLogout) {
+          onLogout();
+        }
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [token]);
+  }, [token, onLogout]);
 
   useEffect(() => {
-    if (token) {
-      fetchUser();
-    }
-  }, [fetchUser, token]);
+    fetchUser();
+  }, [fetchUser]);
 
   useEffect(() => {
     localStorage.setItem("activeSection", activeSection);
   }, [activeSection]);
 
-  if (!managerData || !managerData.name) {
+  if (loading) {
     return <div className="dashboard">Loading...</div>;
+  }
+
+  if (!managerData || !managerData.name) {
+    return <div className="dashboard">Unable to load dashboard.</div>;
   }
 
   return (

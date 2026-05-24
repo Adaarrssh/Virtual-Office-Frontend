@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { io } from "socket.io-client";
 
@@ -14,15 +14,16 @@ function App() {
 
   const socketRef = useRef(null);
 
-  const initSocket = () => {
+  const initSocket = useCallback(() => {
     const token = localStorage.getItem("token");
+
     if (!token) return;
 
     if (socketRef.current) {
       socketRef.current.disconnect();
     }
 
-    const socket = io("http://localhost:5000", {
+    const socket = io(process.env.REACT_APP_API_URL, {
       auth: { token },
     });
 
@@ -35,21 +36,38 @@ function App() {
         setPopup(null);
       }, 4000);
     });
-  };
+
+    socket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+    });
+  }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user"));
+    try {
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user"));
 
-    if (token && user?.role) {
-      setRole(user.role);
-      initSocket();
+      if (token && user?.role) {
+        setRole(user.role);
+        initSocket();
+      } else {
+        setRole(null);
+      }
+    } catch (err) {
+      console.error("App initialization error:", err);
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
+      setRole(null);
     }
 
     return () => {
-      if (socketRef.current) socketRef.current.disconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
-  }, []);
+  }, [initSocket]);
 
   const handleSuccessfulLogin = (userRole) => {
     setRole(userRole);
@@ -57,7 +75,10 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("activeSection");
+
     setRole(null);
 
     if (socketRef.current) {

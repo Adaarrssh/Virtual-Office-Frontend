@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import ChatWindow from "./ChatWindow";
 import "../styles/dashboard.css";
 
-const API = "http://localhost:5000";
+const API = process.env.REACT_APP_API_URL;
 
 const TeamsPanel = ({ showActions = true, limit = false }) => {
   const [members, setMembers] = useState([]);
