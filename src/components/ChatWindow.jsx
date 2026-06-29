@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import API from "../api";
 import { io } from "socket.io-client";
 import "../styles/chatwindow.css";
 
