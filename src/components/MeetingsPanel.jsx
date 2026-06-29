@@ -21,7 +21,7 @@ const MeetingsPanel = () => {
   useEffect(() => {
     const fetchMeetings = async () => {
       try {
-        const res = await fetch(`${API}/api/meetings`, {
+        const res = await fetch(`${API}/meetings`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -33,7 +33,7 @@ const MeetingsPanel = () => {
 
     const fetchUsers = async () => {
       try {
-        const res = await fetch(`${API}/api/users/team`, {
+        const res = await fetch(`${API}/users/team`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -51,7 +51,7 @@ const MeetingsPanel = () => {
     e.preventDefault();
 
     try {
-      const res = await fetch(`${API}/api/meetings`, {
+      const res = await fetch(`${API}/meetings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +82,7 @@ const MeetingsPanel = () => {
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`${API}/api/meetings/${id}`, {
+      await fetch(`${API}/meetings/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

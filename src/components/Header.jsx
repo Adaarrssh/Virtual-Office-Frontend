@@ -8,7 +8,7 @@ const Header = ({ user, onSelect, onLogout }) => {
 
   // 🔥 FIXED AVATAR (CLOUDINARY SUPPORT)
   const avatar = user.profileUrl
-    ? user.profileUrl // ✅ direct cloudinary URL
+    ? user.profileUrl
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(
         name,
       )}&background=4f46e5&color=fff`;

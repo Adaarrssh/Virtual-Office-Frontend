@@ -15,7 +15,7 @@ const TasksPanel = ({ role, limit }) => {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/tasks`, {
+      const res = await fetch(`${API}/tasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -33,14 +33,11 @@ const TasksPanel = ({ role, limit }) => {
     if (role !== "manager") return;
 
     try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/users/team`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const res = await fetch(`${API}/users/team`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       const data = await res.json();
       setEmployees(
@@ -67,7 +64,7 @@ const TasksPanel = ({ role, limit }) => {
     if (!newTask.title || !newTask.assignedTo) return;
 
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/tasks`, {
+      await fetch(`${API}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -86,7 +83,7 @@ const TasksPanel = ({ role, limit }) => {
 
   const updateTask = async (id, status, notes) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/tasks/${id}`, {
+      await fetch(`${API}/tasks/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +100,7 @@ const TasksPanel = ({ role, limit }) => {
 
   const deleteTask = async (id) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/tasks/${id}`, {
+      await fetch(`${API}/tasks/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

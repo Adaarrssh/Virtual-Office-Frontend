@@ -45,7 +45,7 @@ const ChatWindow = ({ receiver, onClose }) => {
 
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`${API}/api/messages/${receiver._id}`, {
+        const res = await fetch(`${API}/messages/${receiver._id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

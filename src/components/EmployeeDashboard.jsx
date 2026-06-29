@@ -28,7 +28,7 @@ const EmployeeDashboard = ({ onLogout }) => {
         return;
       }
 
-      const res = await fetch(`${API}/api/users/me`, {
+      const res = await fetch(`${API}/users/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

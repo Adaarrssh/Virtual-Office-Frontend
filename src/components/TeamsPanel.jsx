@@ -15,7 +15,7 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
   useEffect(() => {
     const fetchTeam = async () => {
       try {
-        const res = await fetch(`${API}/api/users/team`, {
+        const res = await fetch(`${API}/users/team`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

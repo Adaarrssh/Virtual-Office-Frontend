@@ -10,7 +10,7 @@ const ReportsPanel = () => {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/tasks`, {
+      const res = await fetch(`${API}/tasks`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
