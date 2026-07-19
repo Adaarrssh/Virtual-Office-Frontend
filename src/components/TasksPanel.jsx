@@ -6,6 +6,8 @@ const TasksPanel = ({ role, limit }) => {
   const [showForm, setShowForm] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [notesMap, setNotesMap] = useState({});
+  const [statusMap, setStatusMap] = useState({});
+
   const [newTask, setNewTask] = useState({
     title: "",
     assignedTo: "",
@@ -27,13 +29,9 @@ const TasksPanel = ({ role, limit }) => {
     try {
       const res = await API.get("/users/team");
 
-      // console.log("TEAM API RESPONSE:", res.data);
-
       const filtered = Array.isArray(res.data)
         ? res.data.filter((u) => u.role === "employee")
         : [];
-
-      // console.log("EMPLOYEES:", filtered);
 
       setEmployees(filtered);
     } catch (err) {
@@ -50,7 +48,6 @@ const TasksPanel = ({ role, limit }) => {
 
     return () => clearInterval(interval);
   }, [fetchTasks, fetchTeam]);
-
   const handleAddTask = async (e) => {
     e.preventDefault();
 
@@ -67,7 +64,7 @@ const TasksPanel = ({ role, limit }) => {
       setShowForm(false);
       fetchTasks();
     } catch (err) {
-      console.error("Add task error:", err);
+      console.error("Add task error:", err.response?.data || err);
     }
   };
 
@@ -78,9 +75,21 @@ const TasksPanel = ({ role, limit }) => {
         notes,
       });
 
+      setStatusMap((prev) => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+
+      setNotesMap((prev) => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+
       fetchTasks();
     } catch (err) {
-      console.error("Update task error:", err);
+      console.error("Update task error:", err.response?.data || err);
     }
   };
 
@@ -89,13 +98,12 @@ const TasksPanel = ({ role, limit }) => {
       await API.delete(`/tasks/${id}`);
       fetchTasks();
     } catch (err) {
-      console.error("Delete task error:", err);
+      console.error("Delete task error:", err.response?.data || err);
     }
   };
 
   const visibleTasks = limit ? tasks.slice(0, 5) : tasks;
 
-  // console.log("STATE:", employees);
   return (
     <div className="tasks-panel">
       <div className="panel-header">
@@ -117,7 +125,12 @@ const TasksPanel = ({ role, limit }) => {
             type="text"
             placeholder="Task Title"
             value={newTask.title}
-            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+            onChange={(e) =>
+              setNewTask({
+                ...newTask,
+                title: e.target.value,
+              })
+            }
             required
           />
 
@@ -145,7 +158,6 @@ const TasksPanel = ({ role, limit }) => {
           </button>
         </form>
       )}
-
       {visibleTasks.length > 0 ? (
         <ul className="tasks-list">
           {visibleTasks.map((task) => (
@@ -160,7 +172,13 @@ const TasksPanel = ({ role, limit }) => {
                 )}
 
                 {task.notes && (
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#666",
+                      marginTop: "5px",
+                    }}
+                  >
                     Notes: {task.notes}
                   </div>
                 )}
@@ -175,30 +193,37 @@ const TasksPanel = ({ role, limit }) => {
                   }}
                 >
                   <select
-                    value={task.status}
+                    value={statusMap[task._id] ?? task.status}
                     onChange={(e) =>
-                      updateTask(task._id, e.target.value, task.notes)
+                      setStatusMap((prev) => ({
+                        ...prev,
+                        [task._id]: e.target.value,
+                      }))
                     }
                   >
-                    <option>Not Completed</option>
-                    <option>In Progress</option>
-                    <option>Completed</option>
+                    <option value="Not Completed">Not Completed</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
                   </select>
 
                   <textarea
                     placeholder="Add notes..."
                     value={notesMap[task._id] ?? task.notes ?? ""}
                     onChange={(e) =>
-                      setNotesMap({
-                        ...notesMap,
+                      setNotesMap((prev) => ({
+                        ...prev,
                         [task._id]: e.target.value,
-                      })
+                      }))
                     }
                   />
 
                   <button
                     onClick={() =>
-                      updateTask(task._id, task.status, notesMap[task._id])
+                      updateTask(
+                        task._id,
+                        statusMap[task._id] ?? task.status,
+                        notesMap[task._id] ?? task.notes,
+                      )
                     }
                   >
                     Save
@@ -208,7 +233,12 @@ const TasksPanel = ({ role, limit }) => {
                 <div style={{ display: "flex", gap: "10px" }}>
                   <span
                     style={{
-                      color: task.status === "Completed" ? "green" : "orange",
+                      color:
+                        task.status === "Completed"
+                          ? "green"
+                          : task.status === "In Progress"
+                            ? "#2563eb"
+                            : "orange",
                       fontWeight: "bold",
                     }}
                   >
