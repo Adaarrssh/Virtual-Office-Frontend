@@ -1,53 +1,46 @@
 import React, { useState, useEffect, useCallback } from "react";
 import API from "../api";
+
 const TasksPanel = ({ role, limit }) => {
   const [tasks, setTasks] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [notesMap, setNotesMap] = useState({});
-
   const [newTask, setNewTask] = useState({
     title: "",
     assignedTo: "",
   });
 
-  const token = localStorage.getItem("token");
-
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/tasks`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
+      const res = await API.get("/tasks");
+      setTasks(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Fetch tasks error:", err);
       setTasks([]);
     }
-  }, [token]); // ✅ FIXED (removed role)
+  }, []);
 
   const fetchTeam = useCallback(async () => {
     if (role !== "manager") return;
 
     try {
-      const res = await fetch(`${API}/users/team`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await API.get("/users/team");
 
-      const data = await res.json();
-      setEmployees(
-        Array.isArray(data) ? data.filter((u) => u.role === "employee") : [],
-      );
+      // console.log("TEAM API RESPONSE:", res.data);
+
+      const filtered = Array.isArray(res.data)
+        ? res.data.filter((u) => u.role === "employee")
+        : [];
+
+      // console.log("EMPLOYEES:", filtered);
+
+      setEmployees(filtered);
     } catch (err) {
       console.error("Fetch team error:", err);
       setEmployees([]);
     }
-  }, [token, role]);
+  }, [role]);
 
   useEffect(() => {
     fetchTasks();
@@ -64,16 +57,13 @@ const TasksPanel = ({ role, limit }) => {
     if (!newTask.title || !newTask.assignedTo) return;
 
     try {
-      await fetch(`${API}/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(newTask),
+      await API.post("/tasks", newTask);
+
+      setNewTask({
+        title: "",
+        assignedTo: "",
       });
 
-      setNewTask({ title: "", assignedTo: "" });
       setShowForm(false);
       fetchTasks();
     } catch (err) {
@@ -83,13 +73,9 @@ const TasksPanel = ({ role, limit }) => {
 
   const updateTask = async (id, status, notes) => {
     try {
-      await fetch(`${API}/tasks/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status, notes }),
+      await API.patch(`/tasks/${id}`, {
+        status,
+        notes,
       });
 
       fetchTasks();
@@ -100,13 +86,7 @@ const TasksPanel = ({ role, limit }) => {
 
   const deleteTask = async (id) => {
     try {
-      await fetch(`${API}/tasks/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      await API.delete(`/tasks/${id}`);
       fetchTasks();
     } catch (err) {
       console.error("Delete task error:", err);
@@ -115,6 +95,7 @@ const TasksPanel = ({ role, limit }) => {
 
   const visibleTasks = limit ? tasks.slice(0, 5) : tasks;
 
+  // console.log("STATE:", employees);
   return (
     <div className="tasks-panel">
       <div className="panel-header">
@@ -143,7 +124,10 @@ const TasksPanel = ({ role, limit }) => {
           <select
             value={newTask.assignedTo}
             onChange={(e) =>
-              setNewTask({ ...newTask, assignedTo: e.target.value })
+              setNewTask({
+                ...newTask,
+                assignedTo: e.target.value,
+              })
             }
             required
           >
@@ -184,7 +168,11 @@ const TasksPanel = ({ role, limit }) => {
 
               {role === "employee" ? (
                 <div
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
                 >
                   <select
                     value={task.status}
