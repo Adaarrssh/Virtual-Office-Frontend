@@ -2,34 +2,19 @@ import React, { useState, useEffect } from "react";
 import ChatWindow from "./ChatWindow";
 import "../styles/dashboard.css";
 import API from "../api";
-
-const API = process.env.REACT_APP_API_URL;
-
 const TeamsPanel = ({ showActions = true, limit = false }) => {
   const [members, setMembers] = useState([]);
   const [chatUser, setChatUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user")) || {};
 
   useEffect(() => {
     const fetchTeam = async () => {
       try {
-        const res = await fetch(`${API}/users/team`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const res = await API.get("/users/team");
+        console.log("TEAM API RESPONSE:", res.data);
 
-        if (!res.ok) {
-          throw new Error("Failed to fetch team");
-        }
-
-        const data = await res.json();
-        console.log("TEAM API RESPONSE:", data);
-
-        setMembers(Array.isArray(data) ? data : []);
+        setMembers(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Team fetch error:", err);
         setMembers([]);
@@ -38,10 +23,8 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
       }
     };
 
-    if (token) {
-      fetchTeam();
-    }
-  }, [token]);
+    fetchTeam();
+  }, []);
 
   const displayMembers = limit ? members.slice(0, 2) : members;
 

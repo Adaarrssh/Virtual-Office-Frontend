@@ -1,6 +1,5 @@
 import React from "react";
 import { LogOut, Map } from "lucide-react";
-import API from "../api";
 
 const Header = ({ user, onSelect, onLogout }) => {
   if (!user || !user.name) return null;

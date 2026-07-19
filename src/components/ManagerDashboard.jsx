@@ -9,11 +9,6 @@ import TeamsPanel from "./TeamsPanel";
 import ReportsPanel from "./ReportsPanel";
 import CreateEmployeePanel from "./CreateEmployeePanel";
 import "../styles/dashboard.css";
-
-const API =
-  process.env.REACT_APP_API_URL ||
-  "https://virtual-office-backend-3e1e.onrender.com";
-
 const ManagerDashboard = ({ onLogout }) => {
   const [activeSection, setActiveSection] = useState(
     localStorage.getItem("activeSection") || "Home",
@@ -22,37 +17,16 @@ const ManagerDashboard = ({ onLogout }) => {
   const [managerData, setManagerData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const token = localStorage.getItem("token");
-
   const fetchUser = useCallback(async () => {
     try {
-      if (!token) {
-        setManagerData(null);
-        return;
-      }
+      const res = await API.get("/users/me");
 
-      const res = await fetch(`${API}/users/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.status === 401) {
-        throw new Error("Unauthorized");
-      }
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch user");
-      }
-
-      const data = await res.json();
-
-      setManagerData(data);
-      localStorage.setItem("user", JSON.stringify(data));
+      setManagerData(res.data);
+      localStorage.setItem("user", JSON.stringify(res.data));
     } catch (err) {
       console.error("User fetch error:", err);
 
-      if (err.message === "Unauthorized") {
+      if (err.response?.status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
 
@@ -65,7 +39,7 @@ const ManagerDashboard = ({ onLogout }) => {
     } finally {
       setLoading(false);
     }
-  }, [token, onLogout]);
+  }, [onLogout]);
 
   useEffect(() => {
     fetchUser();

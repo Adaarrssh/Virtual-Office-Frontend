@@ -3,8 +3,6 @@ import API from "../api";
 import { io } from "socket.io-client";
 import "../styles/chatwindow.css";
 
-const API = process.env.REACT_APP_API_URL;
-
 const ChatWindow = ({ receiver, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -20,7 +18,7 @@ const ChatWindow = ({ receiver, onClose }) => {
   useEffect(() => {
     if (!user?._id || !token) return;
 
-    const socket = io(API, {
+    const socket = io(API.defaults.baseURL, {
       auth: { token },
     });
 
@@ -46,13 +44,8 @@ const ChatWindow = ({ receiver, onClose }) => {
 
     const fetchHistory = async () => {
       try {
-        const res = await fetch(`${API}/messages/${receiver._id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await res.json();
+        const res = await API.get(`/messages/${receiver._id}`);
+        const data = res.data;
         setMessages(Array.isArray(data) ? data : []);
       } catch {
         setMessages([]);

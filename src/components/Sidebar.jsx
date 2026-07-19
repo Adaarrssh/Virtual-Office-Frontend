@@ -1,5 +1,4 @@
 import React from "react";
-import API from "../api";
 
 const Sidebar = ({ onSelect, activeSection, role }) => {
   // Define navigation items based on the user's role

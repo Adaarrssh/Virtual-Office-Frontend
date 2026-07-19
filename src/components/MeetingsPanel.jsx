@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from "react";
 import "../styles/meeting.css";
 import API from "../api";
-
-const API = process.env.REACT_APP_API_URL;
-
 const MeetingsPanel = () => {
   const [meetings, setMeetings] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
-  const token = localStorage.getItem("token");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -22,10 +18,8 @@ const MeetingsPanel = () => {
   useEffect(() => {
     const fetchMeetings = async () => {
       try {
-        const res = await fetch(`${API}/meetings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const res = await API.get("/meetings");
+        const data = res.data;
         setMeetings(Array.isArray(data) ? data : []);
       } catch {
         setMeetings([]);
@@ -34,10 +28,8 @@ const MeetingsPanel = () => {
 
     const fetchUsers = async () => {
       try {
-        const res = await fetch(`${API}/users/team`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const res = await API.get("/users/team");
+        const data = res.data;
         setEmployees(Array.isArray(data) ? data : []);
       } catch {
         setEmployees([]);
@@ -46,25 +38,17 @@ const MeetingsPanel = () => {
 
     fetchMeetings();
     fetchUsers();
-  }, [token]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const res = await fetch(`${API}/meetings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...formData,
-          time: formData.time,
-        }),
+      const res = await API.post("/meetings", {
+        ...formData,
+        time: formData.time,
       });
-
-      const newMeeting = await res.json();
+      const newMeeting = res.data;
 
       setMeetings((prev) => [newMeeting, ...prev]);
 
@@ -83,11 +67,7 @@ const MeetingsPanel = () => {
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`${API}/meetings/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
+      await API.delete(`/meetings/${id}`);
       setMeetings((prev) => prev.filter((m) => m._id !== id));
     } catch (err) {
       console.error(err);

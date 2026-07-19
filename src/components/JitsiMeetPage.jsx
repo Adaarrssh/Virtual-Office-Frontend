@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
-import API from "../api";
 
 const JitsiMeetPage = () => {
   const { roomId } = useParams();
