@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import API from "../api";
-
+import { toast } from "react-hot-toast";
 const CreateEmployeePanel = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -11,7 +11,9 @@ const CreateEmployeePanel = () => {
     e.preventDefault();
 
     if (!name.trim() || !password.trim()) {
-      setMessage("All fields required");
+      const msg = "Please fill in all fields.";
+      setMessage(msg);
+      toast.error(msg);
       return;
     }
 
@@ -26,14 +28,17 @@ const CreateEmployeePanel = () => {
 
       const data = res.data;
 
-      setMessage(`Employee created. Email: ${data.email}`);
+      setMessage(`Employee created successfully.\nEmail: ${data.email}`);
+      toast.success("Employee created successfully");
       setName("");
       setPassword("");
     } catch (err) {
       console.error(err);
-      setMessage(
-        err?.response?.data?.message || "Server error while creating employee",
-      );
+      const msg =
+        err?.response?.data?.message || "Server error while creating employee";
+
+      setMessage(msg);
+      toast.error(msg);
     }
 
     setLoading(false);
@@ -66,7 +71,18 @@ const CreateEmployeePanel = () => {
       </form>
 
       {message && (
-        <p style={{ marginTop: "10px", color: "#2563eb" }}>{message}</p>
+        <p
+          style={{
+            marginTop: "10px",
+            color: message.toLowerCase().includes("successfully")
+              ? "#16a34a"
+              : "#dc2626",
+            whiteSpace: "pre-line",
+            fontWeight: "500",
+          }}
+        >
+          {message}
+        </p>
       )}
     </div>
   );

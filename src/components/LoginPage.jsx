@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { toast } from "react-hot-toast";
 import {
   LogIn,
   User,
@@ -20,7 +21,9 @@ const LoginPage = ({ onSuccessfulLogin }) => {
     setError("");
 
     if (!username.trim() || !password.trim()) {
-      setError("Email aur password dono zaroori hain.");
+      const message = "Email and password are required.";
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -36,13 +39,14 @@ const LoginPage = ({ onSuccessfulLogin }) => {
 
       if (!data?.token || !data?.user) {
         setError("Invalid login response from server");
+        toast.error("Invalid server response");
         setIsSubmitting(false);
         return;
       }
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-
+      toast.success(`Welcome back, ${data.user.name}!`);
       if (data.user?.role) {
         onSuccessfulLogin(data.user.role);
       } else {
@@ -50,9 +54,11 @@ const LoginPage = ({ onSuccessfulLogin }) => {
       }
     } catch (err) {
       console.error("LOGIN ERROR:", err);
-      setError(
-        err?.response?.data?.message || "Server error. Please try again.",
-      );
+      const message =
+        err?.response?.data?.message || "Server error. Please try again.";
+
+      setError(message);
+      toast.error(message);
     }
 
     setIsSubmitting(false);

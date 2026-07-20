@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import API from "../api";
 import { io } from "socket.io-client";
+import toast from "react-hot-toast";
 import "../styles/chatwindow.css";
 
 const ChatWindow = ({ receiver, onClose }) => {
@@ -8,23 +9,37 @@ const ChatWindow = ({ receiver, onClose }) => {
   const [newMessage, setNewMessage] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
 
+  const [isConnected, setIsConnected] = useState(false);
+  const [sending, setSending] = useState(false);
+
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
   const token = localStorage.getItem("token");
 
-  // 🔥 GLOBAL SOCKET
   useEffect(() => {
     if (!user?._id || !token) return;
 
     const socket = io(API.defaults.baseURL, {
       auth: { token },
+      transports: ["websocket"],
     });
 
     socketRef.current = socket;
 
-    socket.emit("joinRoom", user._id);
+    socket.on("connect", () => {
+      setIsConnected(true);
+      socket.emit("joinRoom", user._id);
+    });
+
+    socket.on("disconnect", () => {
+      setIsConnected(false);
+    });
+
+    socket.on("connect_error", () => {
+      setIsConnected(false);
+    });
 
     socket.on("receiveMessage", (msg) => {
       if (
@@ -35,41 +50,58 @@ const ChatWindow = ({ receiver, onClose }) => {
       }
     });
 
-    return () => socket.disconnect();
+    return () => {
+      socket.disconnect();
+    };
   }, [user?._id, token, receiver]);
 
-  // 🔥 FETCH HISTORY
   useEffect(() => {
-    if (!receiver?._id || !token) return;
+    if (!receiver?._id) return;
 
     const fetchHistory = async () => {
       try {
         const res = await API.get(`/messages/${receiver._id}`);
-        const data = res.data;
-        setMessages(Array.isArray(data) ? data : []);
-      } catch {
+        setMessages(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        console.error(err);
         setMessages([]);
+        toast.error("Unable to load chat history");
       }
     };
 
     fetchHistory();
-  }, [receiver?._id, token]);
+  }, [receiver?._id]);
 
-  // 🔥 AUTO SCROLL
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
   }, [messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
-    if (!socketRef.current) return;
 
-    socketRef.current.emit("sendMessage", {
-      receiver: receiver._id,
-      message: newMessage.trim(),
-    });
+    if (!socketRef.current || !isConnected) {
+      toast.error("Socket is disconnected");
+      return;
+    }
 
-    setNewMessage("");
+    try {
+      setSending(true);
+
+      socketRef.current.emit("sendMessage", {
+        receiver: receiver._id,
+        message: newMessage.trim(),
+      });
+
+      setNewMessage("");
+    } catch (err) {
+      console.error(err);
+
+      toast.error("Failed to send message");
+    } finally {
+      setSending(false);
+    }
   };
 
   if (!receiver) return null;
@@ -89,10 +121,22 @@ const ChatWindow = ({ receiver, onClose }) => {
     <div className="chat-window-container">
       <div className="chat-window">
         <div className="chat-header">
-          <h3>{receiver.name}</h3>
+          <div>
+            <h3>{receiver.name}</h3>
+
+            <small
+              style={{
+                color: isConnected ? "#16a34a" : "#dc2626",
+                fontWeight: "600",
+              }}
+            >
+              {isConnected ? "🟢 Connected" : "🔴 Offline"}
+            </small>
+          </div>
 
           <div>
             <button onClick={() => setIsMinimized(true)}>−</button>
+
             <button onClick={onClose}>×</button>
           </div>
         </div>
@@ -113,8 +157,18 @@ const ChatWindow = ({ receiver, onClose }) => {
               );
             })
           ) : (
-            <div className="no-messages">Start conversation...</div>
+            <div
+              className="no-messages"
+              style={{
+                textAlign: "center",
+                color: "#6b7280",
+                padding: "20px",
+              }}
+            >
+              👋 Start a conversation
+            </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -124,8 +178,15 @@ const ChatWindow = ({ receiver, onClose }) => {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             placeholder="Type message..."
+            disabled={!isConnected || sending}
           />
-          <button onClick={handleSendMessage}>Send</button>
+
+          <button
+            onClick={handleSendMessage}
+            disabled={!isConnected || sending || !newMessage.trim()}
+          >
+            {sending ? "Sending..." : "Send"}
+          </button>
         </div>
       </div>
     </div>

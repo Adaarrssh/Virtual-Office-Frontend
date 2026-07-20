@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { io } from "socket.io-client";
+import { Toaster } from "react-hot-toast";
 
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import ManagerDashboard from "./components/ManagerDashboard";
@@ -75,19 +76,47 @@ function App() {
   };
 
   const handleLogout = () => {
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("activeSection");
 
     setRole(null);
 
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-    }
+    toast.success("Logged out successfully");
   };
 
   return (
     <Router>
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          duration: 2500,
+          style: {
+            background: "#fff",
+            color: "#111827",
+            borderRadius: "10px",
+            fontSize: "14px",
+            padding: "12px 16px",
+          },
+          success: {
+            iconTheme: {
+              primary: "#16a34a",
+              secondary: "#fff",
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: "#dc2626",
+              secondary: "#fff",
+            },
+          },
+        }}
+      />
       {popup && (
         <div className="global-popup">📢 New Meeting: {popup.title}</div>
       )}

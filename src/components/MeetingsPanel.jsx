@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import "../styles/meeting.css";
 import API from "../api";
+
 const MeetingsPanel = () => {
   const [meetings, setMeetings] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
+
+  const [creatingMeeting, setCreatingMeeting] = useState(false);
+  const [deletingMeetingId, setDeletingMeetingId] = useState(null);
+  const [joiningMeetingId, setJoiningMeetingId] = useState(null);
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
 
@@ -16,38 +22,52 @@ const MeetingsPanel = () => {
   });
 
   useEffect(() => {
-    const fetchMeetings = async () => {
-      try {
-        const res = await API.get("/meetings");
-        const data = res.data;
-        setMeetings(Array.isArray(data) ? data : []);
-      } catch {
-        setMeetings([]);
-      }
-    };
-
-    const fetchUsers = async () => {
-      try {
-        const res = await API.get("/users/team");
-        const data = res.data;
-        setEmployees(Array.isArray(data) ? data : []);
-      } catch {
-        setEmployees([]);
-      }
-    };
-
     fetchMeetings();
     fetchUsers();
   }, []);
 
+  const fetchMeetings = async () => {
+    try {
+      const res = await API.get("/meetings");
+      setMeetings(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      setMeetings([]);
+      toast.error("Failed to load meetings");
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await API.get("/users/team");
+      setEmployees(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error(err);
+      setEmployees([]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.title.trim()) {
+      toast.error("Meeting title is required");
+      return;
+    }
+
+    if (!formData.time) {
+      toast.error("Meeting time is required");
+      return;
+    }
+
     try {
+      setCreatingMeeting(true);
+
       const res = await API.post("/meetings", {
         ...formData,
         time: formData.time,
       });
+
       const newMeeting = res.data;
 
       setMeetings((prev) => [newMeeting, ...prev]);
@@ -60,17 +80,48 @@ const MeetingsPanel = () => {
       });
 
       setShowForm(false);
+
+      toast.success("Meeting created successfully");
     } catch (err) {
       console.error(err);
+
+      toast.error(err?.response?.data?.message || "Failed to create meeting");
+    } finally {
+      setCreatingMeeting(false);
     }
   };
 
   const handleDelete = async (id) => {
     try {
+      setDeletingMeetingId(id);
+
       await API.delete(`/meetings/${id}`);
+
       setMeetings((prev) => prev.filter((m) => m._id !== id));
+
+      toast.success("Meeting deleted successfully");
     } catch (err) {
       console.error(err);
+
+      toast.error(err?.response?.data?.message || "Failed to delete meeting");
+    } finally {
+      setDeletingMeetingId(null);
+    }
+  };
+
+  const handleJoinMeeting = async (meeting) => {
+    try {
+      setJoiningMeetingId(meeting._id);
+
+      window.open(meeting.meetingLink, "_blank");
+
+      toast.success("Joining meeting...");
+    } catch (err) {
+      console.error(err);
+
+      toast.error("Unable to join meeting");
+    } finally {
+      setJoiningMeetingId(null);
     }
   };
 
@@ -83,7 +134,9 @@ const MeetingsPanel = () => {
       return "live";
     }
 
-    if (now > end) return "completed";
+    if (now > end) {
+      return "completed";
+    }
 
     return "upcoming";
   };
@@ -92,8 +145,9 @@ const MeetingsPanel = () => {
     <div className="container">
       <div className="header">
         <h2>Meetings</h2>
+
         <button className="add-btn" onClick={() => setShowForm(!showForm)}>
-          +
+          {showForm ? "✕" : "+"}
         </button>
       </div>
 
@@ -103,7 +157,10 @@ const MeetingsPanel = () => {
             placeholder="Meeting Title"
             value={formData.title}
             onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
+              setFormData({
+                ...formData,
+                title: e.target.value,
+              })
             }
             required
           />
@@ -111,7 +168,12 @@ const MeetingsPanel = () => {
           <input
             type="datetime-local"
             value={formData.time}
-            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                time: e.target.value,
+              })
+            }
             required
           />
 
@@ -119,7 +181,10 @@ const MeetingsPanel = () => {
             <select
               value={formData.inviteType}
               onChange={(e) =>
-                setFormData({ ...formData, inviteType: e.target.value })
+                setFormData({
+                  ...formData,
+                  inviteType: e.target.value,
+                })
               }
             >
               <option value="selected">Select Users</option>
@@ -151,53 +216,68 @@ const MeetingsPanel = () => {
             </select>
           )}
 
-          <button className="create-btn">Create Meeting</button>
+          <button className="create-btn" disabled={creatingMeeting}>
+            {creatingMeeting ? "Creating..." : "Create Meeting"}
+          </button>
         </form>
       )}
 
-      {meetings.length === 0 && <p>No meetings scheduled</p>}
+      {meetings.length === 0 ? (
+        <p
+          style={{
+            textAlign: "center",
+            marginTop: "20px",
+            color: "#6b7280",
+          }}
+        >
+          No meetings scheduled yet.
+        </p>
+      ) : (
+        meetings.map((m) => {
+          const status = getStatus(m.time);
 
-      {meetings.map((m) => {
-        const status = getStatus(m.time);
+          return (
+            <div key={m._id} className="card">
+              <div className="card-left">
+                <strong>{m.title}</strong>
 
-        return (
-          <div key={m._id} className="card">
-            <div className="card-left">
-              <strong>{m.title}</strong>
+                <p>
+                  {new Date(m.time).toLocaleString("en-IN", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </p>
 
-              <p>
-                {new Date(m.time).toLocaleString("en-IN", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </p>
+                <span className={`status ${status}`}>{status}</span>
+              </div>
 
-              <span className={`status ${status}`}>{status}</span>
-            </div>
-
-            <div className="card-actions">
-              <button
-                className={`join-btn ${
-                  status === "completed" ? "disabled" : ""
-                }`}
-                disabled={status === "completed"}
-                onClick={() => window.open(m.meetingLink, "_blank")}
-              >
-                Join
-              </button>
-
-              {m.createdBy === user._id && (
+              <div className="card-actions">
                 <button
-                  className="delete-btn"
-                  onClick={() => handleDelete(m._id)}
+                  className={`join-btn ${
+                    status === "completed" ? "disabled" : ""
+                  }`}
+                  disabled={
+                    status === "completed" || joiningMeetingId === m._id
+                  }
+                  onClick={() => handleJoinMeeting(m)}
                 >
-                  Delete
+                  {joiningMeetingId === m._id ? "Joining..." : "Join"}
                 </button>
-              )}
+
+                {m.createdBy === user._id && (
+                  <button
+                    className="delete-btn"
+                    disabled={deletingMeetingId === m._id}
+                    onClick={() => handleDelete(m._id)}
+                  >
+                    {deletingMeetingId === m._id ? "Deleting..." : "Delete"}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </div>
   );
 };

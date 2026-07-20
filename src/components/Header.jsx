@@ -4,9 +4,8 @@ import { LogOut, Map } from "lucide-react";
 const Header = ({ user, onSelect, onLogout }) => {
   if (!user || !user.name) return null;
 
-  const name = user?.name ? user.name : "Loading...";
+  const name = user.name || "Loading...";
 
-  // 🔥 FIXED AVATAR (CLOUDINARY SUPPORT)
   const avatar = user.profileUrl
     ? user.profileUrl
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -26,16 +25,19 @@ const Header = ({ user, onSelect, onLogout }) => {
             )}`;
           }}
         />
+
         <span className="user-name">{name}</span>
       </div>
 
       <div className="header-actions">
         <button className="map-button" onClick={() => onSelect("VirtualMap")}>
-          <Map size={16} /> Virtual Map
+          <Map size={16} />
+          <span>Virtual Map</span>
         </button>
 
         <button className="logout-button" onClick={onLogout}>
-          <LogOut size={16} /> Logout
+          <LogOut size={16} />
+          <span>Logout</span>
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import API from "../api";
+import toast from "react-hot-toast";
 
 const TasksPanel = ({ role, limit }) => {
   const [tasks, setTasks] = useState([]);
@@ -7,6 +8,8 @@ const TasksPanel = ({ role, limit }) => {
   const [employees, setEmployees] = useState([]);
   const [notesMap, setNotesMap] = useState({});
   const [statusMap, setStatusMap] = useState({});
+  const [savingTaskId, setSavingTaskId] = useState(null);
+  const [assigningTask, setAssigningTask] = useState(false);
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -37,6 +40,7 @@ const TasksPanel = ({ role, limit }) => {
     } catch (err) {
       console.error("Fetch team error:", err);
       setEmployees([]);
+      toast.error("Unable to load employees");
     }
   }, [role]);
 
@@ -48,13 +52,21 @@ const TasksPanel = ({ role, limit }) => {
 
     return () => clearInterval(interval);
   }, [fetchTasks, fetchTeam]);
+
   const handleAddTask = async (e) => {
     e.preventDefault();
 
-    if (!newTask.title || !newTask.assignedTo) return;
+    if (!newTask.title.trim() || !newTask.assignedTo) {
+      toast.error("Please enter task title and employee.");
+      return;
+    }
 
     try {
+      setAssigningTask(true);
+
       await API.post("/tasks", newTask);
+
+      toast.success("Task assigned successfully");
 
       setNewTask({
         title: "",
@@ -62,14 +74,21 @@ const TasksPanel = ({ role, limit }) => {
       });
 
       setShowForm(false);
+
       fetchTasks();
     } catch (err) {
       console.error("Add task error:", err.response?.data || err);
+
+      toast.error(err?.response?.data?.message || "Failed to assign task");
+    } finally {
+      setAssigningTask(false);
     }
   };
 
   const updateTask = async (id, status, notes) => {
     try {
+      setSavingTaskId(id);
+
       await API.patch(`/tasks/${id}`, {
         status,
         notes,
@@ -88,17 +107,34 @@ const TasksPanel = ({ role, limit }) => {
       });
 
       fetchTasks();
+
+      if (status === "Completed") {
+        toast.success("🎉 Task marked as Completed");
+      } else if (status === "In Progress") {
+        toast.success("🟦 Task marked as In Progress");
+      } else {
+        toast.success("✅ Task updated successfully");
+      }
     } catch (err) {
       console.error("Update task error:", err.response?.data || err);
+
+      toast.error(err?.response?.data?.message || "Failed to update task");
+    } finally {
+      setSavingTaskId(null);
     }
   };
 
   const deleteTask = async (id) => {
     try {
       await API.delete(`/tasks/${id}`);
+
+      toast.success("Task removed successfully");
+
       fetchTasks();
     } catch (err) {
       console.error("Delete task error:", err.response?.data || err);
+
+      toast.error(err?.response?.data?.message || "Failed to remove task");
     }
   };
 
@@ -153,11 +189,16 @@ const TasksPanel = ({ role, limit }) => {
             ))}
           </select>
 
-          <button type="submit" className="submit-task-btn">
-            Assign
+          <button
+            type="submit"
+            className="submit-task-btn"
+            disabled={assigningTask}
+          >
+            {assigningTask ? "Assigning..." : "Assign"}
           </button>
         </form>
       )}
+
       {visibleTasks.length > 0 ? (
         <ul className="tasks-list">
           {visibleTasks.map((task) => (
@@ -179,7 +220,7 @@ const TasksPanel = ({ role, limit }) => {
                       marginTop: "5px",
                     }}
                   >
-                    Notes: {task.notes}
+                    <strong>Notes:</strong> {task.notes}
                   </div>
                 )}
               </div>
@@ -218,6 +259,7 @@ const TasksPanel = ({ role, limit }) => {
                   />
 
                   <button
+                    disabled={savingTaskId === task._id}
                     onClick={() =>
                       updateTask(
                         task._id,
@@ -226,7 +268,7 @@ const TasksPanel = ({ role, limit }) => {
                       )
                     }
                   >
-                    Save
+                    {savingTaskId === task._id ? "Saving..." : "Save"}
                   </button>
                 </div>
               ) : (

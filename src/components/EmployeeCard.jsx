@@ -1,8 +1,10 @@
 import React, { useRef, useState } from "react";
+import toast from "react-hot-toast";
 import API from "../api";
 
 const EmployeeCard = ({ employee, isSelf = false, refreshUser }) => {
   const fileRef = useRef();
+
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,12 +20,23 @@ const EmployeeCard = ({ employee, isSelf = false, refreshUser }) => {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`;
 
   const handleUpload = async (e) => {
-    try {
-      const file = e.target.files[0];
-      if (!file) return;
+    const file = e.target.files[0];
 
-      setPreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select a valid image.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image size should be less than 2 MB.");
+      return;
+    }
+
+    try {
       setLoading(true);
+      setPreview(URL.createObjectURL(file));
 
       const formData = new FormData();
       formData.append("profile", file);
@@ -32,19 +45,24 @@ const EmployeeCard = ({ employee, isSelf = false, refreshUser }) => {
 
       console.log("UPLOAD RESPONSE:", res.data);
 
-      setPreview(null);
-      setLoading(false);
+      toast.success("Profile photo updated successfully");
 
-      alert("Profile updated ✅");
-
-      if (refreshUser) refreshUser();
+      if (refreshUser) {
+        await refreshUser();
+      }
     } catch (err) {
       console.error("UPLOAD ERROR:", err);
 
+      toast.error(
+        err?.response?.data?.message || "Failed to upload profile photo",
+      );
+    } finally {
       setLoading(false);
       setPreview(null);
 
-      alert(err?.response?.data?.message || "Upload failed ❌");
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
     }
   };
 
@@ -69,7 +87,9 @@ const EmployeeCard = ({ employee, isSelf = false, refreshUser }) => {
       )}
 
       <h2>{name}</h2>
+
       <p>{role === "manager" ? "Project Manager" : "Employee"}</p>
+
       <p>{email}</p>
     </div>
   );
