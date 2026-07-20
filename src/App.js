@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { io } from "socket.io-client";
-import { Toaster } from "react-hot-toast";
-
+import toast, { Toaster } from "react-hot-toast";
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import ManagerDashboard from "./components/ManagerDashboard";
 import LoginPage from "./components/LoginPage";
