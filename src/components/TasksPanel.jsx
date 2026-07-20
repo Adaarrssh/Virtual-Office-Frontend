@@ -93,10 +93,15 @@ const TasksPanel = ({ role, limit }) => {
         status,
         notes,
       });
-
       setStatusMap((prev) => {
         const updated = { ...prev };
-        delete updated[id];
+
+        if (status === "Completed") {
+          updated[id] = "Completed";
+        } else {
+          delete updated[id];
+        }
+
         return updated;
       });
 
@@ -139,6 +144,18 @@ const TasksPanel = ({ role, limit }) => {
   };
 
   const visibleTasks = limit ? tasks.slice(0, 5) : tasks;
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "Completed":
+        return "#16a34a";
+
+      case "In Progress":
+        return "#2563eb";
+
+      default:
+        return "#dc2626";
+    }
+  };
 
   return (
     <div className="tasks-panel">
@@ -202,7 +219,13 @@ const TasksPanel = ({ role, limit }) => {
       {visibleTasks.length > 0 ? (
         <ul className="tasks-list">
           {visibleTasks.map((task) => (
-            <li key={task._id} className="task-item">
+            <li
+              key={task._id}
+              className="task-item"
+              style={{
+                borderLeft: `6px solid ${getStatusColor(task.status)}`,
+              }}
+            >
               <div className="task-info">
                 <span className="task-title">{task.title}</span>
 
@@ -226,68 +249,102 @@ const TasksPanel = ({ role, limit }) => {
               </div>
 
               {role === "employee" ? (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "10px",
-                    alignItems: "center",
-                  }}
-                >
-                  <select
-                    value={statusMap[task._id] ?? task.status}
-                    onChange={(e) =>
-                      setStatusMap((prev) => ({
-                        ...prev,
-                        [task._id]: e.target.value,
-                      }))
-                    }
+                (statusMap[task._id] ?? task.status) === "Completed" ? (
+                  <div
+                    style={{
+                      minWidth: "250px",
+                      background: "#dcfce7",
+                      border: "1px solid #16a34a",
+                      borderRadius: "10px",
+                      padding: "12px",
+                    }}
                   >
-                    <option value="Not Completed">Not Completed</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-
-                  <textarea
-                    placeholder="Add notes..."
-                    value={notesMap[task._id] ?? task.notes ?? ""}
-                    onChange={(e) =>
-                      setNotesMap((prev) => ({
-                        ...prev,
-                        [task._id]: e.target.value,
-                      }))
-                    }
-                  />
-
-                  <button
-                    disabled={savingTaskId === task._id}
-                    onClick={() =>
-                      updateTask(
-                        task._id,
-                        statusMap[task._id] ?? task.status,
-                        notesMap[task._id] ?? task.notes,
-                      )
-                    }
+                    <div
+                      style={{
+                        color: "#166534",
+                        fontWeight: "bold",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      ✅ Task Completed
+                    </div>
+                    <textarea
+                      value={task.notes || ""}
+                      readOnly
+                      style={{
+                        width: "100%",
+                        minHeight: "70px",
+                        resize: "none",
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        color: "#166534",
+                        cursor: "not-allowed",
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                    }}
                   >
-                    {savingTaskId === task._id ? "Saving..." : "Save"}
-                  </button>
-                </div>
+                    <select
+                      value={statusMap[task._id] ?? task.status}
+                      onChange={(e) =>
+                        setStatusMap((prev) => ({
+                          ...prev,
+                          [task._id]: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="Not Completed">Not Completed</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+
+                    <textarea
+                      placeholder="Add notes..."
+                      value={notesMap[task._id] ?? task.notes ?? ""}
+                      onChange={(e) =>
+                        setNotesMap((prev) => ({
+                          ...prev,
+                          [task._id]: e.target.value,
+                        }))
+                      }
+                    />
+
+                    <button
+                      disabled={savingTaskId === task._id}
+                      onClick={() =>
+                        updateTask(
+                          task._id,
+                          statusMap[task._id] ?? task.status,
+                          notesMap[task._id] ?? task.notes,
+                        )
+                      }
+                    >
+                      {savingTaskId === task._id ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                )
               ) : (
                 <div style={{ display: "flex", gap: "10px" }}>
                   <span
                     style={{
-                      color:
-                        task.status === "Completed"
-                          ? "green"
-                          : task.status === "In Progress"
-                            ? "#2563eb"
-                            : "orange",
-                      fontWeight: "bold",
+                      background: getStatusColor(task.status),
+                      color: "#fff",
+                      padding: "5px 10px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: "600",
                     }}
                   >
                     {task.status}
                   </span>
 
-                  {task.status === "Completed" && (
+                  {(statusMap[task._id] ?? task.status) === "Completed" && (
                     <button onClick={() => deleteTask(task._id)}>Remove</button>
                   )}
                 </div>
