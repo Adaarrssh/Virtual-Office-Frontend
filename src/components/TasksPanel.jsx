@@ -252,7 +252,7 @@ const TasksPanel = ({ role, limit }) => {
                 (statusMap[task._id] ?? task.status) === "Completed" ? (
                   <div
                     style={{
-                      minWidth: "250px",
+                      minWidth: "150px",
                       background: "#dcfce7",
                       border: "1px solid #16a34a",
                       borderRadius: "10px",
@@ -273,7 +273,7 @@ const TasksPanel = ({ role, limit }) => {
                       readOnly
                       style={{
                         width: "100%",
-                        minHeight: "70px",
+                        minHeight: "50px",
                         resize: "none",
                         background: "#f0fdf4",
                         border: "1px solid #bbf7d0",
@@ -337,7 +337,7 @@ const TasksPanel = ({ role, limit }) => {
                       color: "#fff",
                       padding: "5px 10px",
                       borderRadius: "20px",
-                      fontSize: "12px",
+                      fontSize: "10px",
                       fontWeight: "600",
                     }}
                   >
