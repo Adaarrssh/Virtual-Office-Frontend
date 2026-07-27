@@ -28,7 +28,7 @@ const JitsiMeetPage = () => {
     return () => {
       api.dispose();
     };
-  }, [roomId]);
+  }, [roomId, navigate]);
 
   return <div id="jitsi-container" />;
 };
