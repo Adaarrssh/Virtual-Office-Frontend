@@ -1,13 +1,12 @@
 import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const JitsiMeetPage = () => {
   const { roomId } = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const domain = "meet.jit.si";
-    console.log("Room ID:", roomId);
-    console.log("Jitsi API:", window.JitsiMeetExternalAPI);
     const options = {
       roomName: roomId,
       width: "100%",
@@ -22,7 +21,13 @@ const JitsiMeetPage = () => {
 
     const api = new window.JitsiMeetExternalAPI(domain, options);
 
-    return () => api.dispose();
+    api.addListener("videoConferenceLeft", () => {
+      navigate("/dashboard");
+    });
+
+    return () => {
+      api.dispose();
+    };
   }, [roomId]);
 
   return <div id="jitsi-container" />;

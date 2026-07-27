@@ -67,9 +67,11 @@ const MeetingsPanel = () => {
     try {
       setCreatingMeeting(true);
 
-      const res = await API.post("/meetings", {
+      const localTime = new Date(formData.time);
+
+      await API.post("/meetings", {
         ...formData,
-        time: formData.time,
+        time: localTime.toISOString(),
       });
 
       const newMeeting = res.data;
