@@ -69,7 +69,7 @@ const MeetingsPanel = () => {
 
       const localTime = new Date(formData.time);
 
-      await API.post("/meetings", {
+      const res = await API.post("/meetings", {
         ...formData,
         time: localTime.toISOString(),
       });
