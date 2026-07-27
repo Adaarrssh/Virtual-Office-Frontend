@@ -95,13 +95,7 @@ const TasksPanel = ({ role, limit }) => {
       });
       setStatusMap((prev) => {
         const updated = { ...prev };
-
-        if (status === "Completed") {
-          updated[id] = "Completed";
-        } else {
-          delete updated[id];
-        }
-
+        delete updated[id];
         return updated;
       });
 
@@ -249,7 +243,7 @@ const TasksPanel = ({ role, limit }) => {
               </div>
 
               {role === "employee" ? (
-                (statusMap[task._id] ?? task.status) === "Completed" ? (
+                task.status === "Completed" ? (
                   <div
                     style={{
                       minWidth: "150px",
