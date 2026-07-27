@@ -126,11 +126,11 @@ const ChatWindow = ({ receiver, onClose }) => {
 
             <small
               style={{
-                color: isConnected ? "#16a34a" : "#dc2626",
+                color: "#16a34a",
                 fontWeight: "600",
               }}
             >
-              {isConnected ? "🟢 Connected" : "🔴 Offline"}
+              Chat
             </small>
           </div>
 
