@@ -24,6 +24,10 @@ const MeetingsPanel = () => {
   useEffect(() => {
     fetchMeetings();
     fetchUsers();
+
+    const interval = setInterval(fetchMeetings, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchMeetings = async () => {
