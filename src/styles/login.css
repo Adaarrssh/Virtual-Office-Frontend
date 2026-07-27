@@ -29,6 +29,7 @@
   text-align: center;
   transition: transform 0.3s ease-in-out;
   border-top: 8px solid var(--accent-color);
+  position: relative;
 }
 
 .login-card:hover {
