@@ -181,7 +181,6 @@ const MeetingsPanel = () => {
 
         <button
           type="button"
-          type="button"
           className="add-btn"
           onClick={() => setShowForm(!showForm)}
         >
@@ -255,7 +254,7 @@ const MeetingsPanel = () => {
           )}
 
           <button
-            type="button"
+            type="submit"
             className="create-btn"
             disabled={creatingMeeting}
           >
