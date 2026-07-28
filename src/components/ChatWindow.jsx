@@ -21,7 +21,9 @@ const ChatWindow = ({ receiver, onClose }) => {
   useEffect(() => {
     if (!user?._id || !token) return;
 
-    const socket = io(API.defaults.baseURL, {
+    const SOCKET_URL = API.defaults.baseURL.replace("/api", "");
+
+    const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ["websocket"],
     });
@@ -29,15 +31,18 @@ const ChatWindow = ({ receiver, onClose }) => {
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      console.log("✅ Socket Connected:", socket.id);
       setIsConnected(true);
       socket.emit("joinRoom", user._id);
     });
 
     socket.on("disconnect", () => {
+      console.log("❌ Socket Disconnected");
       setIsConnected(false);
     });
 
-    socket.on("connect_error", () => {
+    socket.on("connect_error", (err) => {
+      console.error("❌ Socket Error:", err.message);
       setIsConnected(false);
     });
 
@@ -178,12 +183,12 @@ const ChatWindow = ({ receiver, onClose }) => {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
             placeholder="Type message..."
-            disabled={!isConnected || sending}
+            disabled={sending}
           />
 
           <button
             onClick={handleSendMessage}
-            disabled={!isConnected || sending || !newMessage.trim()}
+            disabled={sending || !newMessage.trim()}
           >
             {sending ? "Sending..." : "Send"}
           </button>
