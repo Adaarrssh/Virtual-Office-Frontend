@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import API from "../api";
-import { io } from "socket.io-client";
+import { useSocket } from "../context/SocketContext";
 import toast from "react-hot-toast";
 import "../styles/chatwindow.css";
 
@@ -8,47 +8,16 @@ const ChatWindow = ({ receiver, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
-
-  const [isConnected, setIsConnected] = useState(false);
   const [sending, setSending] = useState(false);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const socketRef = useRef(null);
+  const { socket, onlineUsers } = useSocket();
   const messagesEndRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
-  const token = localStorage.getItem("token");
 
   useEffect(() => {
-    if (!user?._id || !token) return;
+    if (!socket || !receiver) return;
 
-    const SOCKET_URL = API.defaults.baseURL.replace("/api", "");
-
-    const socket = io(SOCKET_URL, {
-      auth: { token },
-      transports: ["websocket"],
-    });
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      console.log("✅ Socket Connected:", socket.id);
-      setIsConnected(true);
-      socket.emit("joinRoom", user._id);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("❌ Socket Disconnected");
-      setIsConnected(false);
-    });
-
-    socket.on("connect_error", (err) => {
-      console.error("❌ Socket Error:", err.message);
-      setIsConnected(false);
-    });
-
-    socket.on("receiveMessage", (msg) => {
-      if (!receiver) return;
-
+    const handleReceiveMessage = (msg) => {
       const senderId =
         typeof msg.sender === "object" ? msg.sender._id : msg.sender;
 
@@ -64,16 +33,13 @@ const ChatWindow = ({ receiver, onClose }) => {
           return [...prev, msg];
         });
       }
-    });
-    socket.on("onlineUsers", (users) => {
-      setOnlineUsers(users);
-    });
-    return () => {
-      socket.off("receiveMessage");
-      socket.off("onlineUsers");
-      socket.disconnect();
     };
-  }, [user?._id, token, receiver]);
+
+    socket.on("receiveMessage", handleReceiveMessage);
+    return () => {
+      socket.off("receiveMessage", handleReceiveMessage);
+    };
+  }, [socket, receiver, user._id]);
 
   useEffect(() => {
     if (!receiver?._id) return;
@@ -101,7 +67,7 @@ const ChatWindow = ({ receiver, onClose }) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    if (!socketRef.current || !isConnected) {
+    if (!socket || !socket.connected) {
       toast.error("Socket is disconnected");
       return;
     }
@@ -109,7 +75,7 @@ const ChatWindow = ({ receiver, onClose }) => {
     try {
       setSending(true);
 
-      socketRef.current.emit("sendMessage", {
+      socket.emit("sendMessage", {
         receiver: receiver._id,
         message: newMessage.trim(),
       });

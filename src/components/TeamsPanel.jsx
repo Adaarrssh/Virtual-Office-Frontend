@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
+import React, { useState, useEffect } from "react";
+import { useSocket } from "../context/SocketContext";
 import ChatWindow from "./ChatWindow";
 import "../styles/dashboard.css";
 import API from "../api";
@@ -7,10 +7,7 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
   const [members, setMembers] = useState([]);
   const [chatUser, setChatUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const socketRef = useRef(null);
-
-  const token = localStorage.getItem("token");
+  const { onlineUsers } = useSocket();
   const user = JSON.parse(localStorage.getItem("user")) || {};
 
   useEffect(() => {
@@ -30,27 +27,6 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
 
     fetchTeam();
   }, []);
-  useEffect(() => {
-    if (!user?._id || !token) return;
-
-    const SOCKET_URL = API.defaults.baseURL.replace("/api", "");
-
-    const socket = io(SOCKET_URL, {
-      auth: { token },
-      transports: ["websocket"],
-    });
-
-    socketRef.current = socket;
-
-    socket.on("onlineUsers", (users) => {
-      setOnlineUsers(users);
-    });
-
-    return () => {
-      socket.off("onlineUsers");
-      socket.disconnect();
-    };
-  }, [user?._id, token]);
   const displayMembers = limit ? members.slice(0, 2) : members;
 
   if (loading) {

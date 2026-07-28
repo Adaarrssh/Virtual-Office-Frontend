@@ -6,6 +6,7 @@ import EmployeeDashboard from "./components/EmployeeDashboard";
 import ManagerDashboard from "./components/ManagerDashboard";
 import LoginPage from "./components/LoginPage";
 import JitsiMeetPage from "./components/JitsiMeetPage";
+import { SocketProvider } from "./context/SocketContext";
 import "./styles/meeting.css";
 
 function App() {
@@ -26,7 +27,13 @@ function App() {
     const socket = io(process.env.REACT_APP_API_URL, {
       auth: { token },
     });
+    socket.on("connect", () => {
+      const user = JSON.parse(localStorage.getItem("user"));
 
+      if (user?._id) {
+        socket.emit("joinRoom", user._id);
+      }
+    });
     socketRef.current = socket;
 
     socket.on("meetingCreated", (data) => {
@@ -89,56 +96,58 @@ function App() {
   };
 
   return (
-    <Router>
-      <Toaster
-        position="top-right"
-        reverseOrder={false}
-        toastOptions={{
-          duration: 2500,
-          style: {
-            background: "#fff",
-            color: "#111827",
-            borderRadius: "10px",
-            fontSize: "14px",
-            padding: "12px 16px",
-          },
-          success: {
-            iconTheme: {
-              primary: "#16a34a",
-              secondary: "#fff",
+    <SocketProvider>
+      <Router>
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 2500,
+            style: {
+              background: "#fff",
+              color: "#111827",
+              borderRadius: "10px",
+              fontSize: "14px",
+              padding: "12px 16px",
             },
-          },
-          error: {
-            iconTheme: {
-              primary: "#dc2626",
-              secondary: "#fff",
+            success: {
+              iconTheme: {
+                primary: "#16a34a",
+                secondary: "#fff",
+              },
             },
-          },
-        }}
-      />
-      {popup && (
-        <div className="global-popup">📢 New Meeting: {popup.title}</div>
-      )}
-
-      <Routes>
-        <Route
-          path="/"
-          element={
-            role ? (
-              role === "employee" ? (
-                <EmployeeDashboard onLogout={handleLogout} />
-              ) : (
-                <ManagerDashboard onLogout={handleLogout} />
-              )
-            ) : (
-              <LoginPage onSuccessfulLogin={handleSuccessfulLogin} />
-            )
-          }
+            error: {
+              iconTheme: {
+                primary: "#dc2626",
+                secondary: "#fff",
+              },
+            },
+          }}
         />
+        {popup && (
+          <div className="global-popup">📢 New Meeting: {popup.title}</div>
+        )}
 
-        <Route path="/meet/:roomId" element={<JitsiMeetPage />} />
-      </Routes>
-    </Router>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              role ? (
+                role === "employee" ? (
+                  <EmployeeDashboard onLogout={handleLogout} />
+                ) : (
+                  <ManagerDashboard onLogout={handleLogout} />
+                )
+              ) : (
+                <LoginPage onSuccessfulLogin={handleSuccessfulLogin} />
+              )
+            }
+          />
+
+          <Route path="/meet/:roomId" element={<JitsiMeetPage />} />
+        </Routes>
+      </Router>
+    </SocketProvider>
   );
 }
 
