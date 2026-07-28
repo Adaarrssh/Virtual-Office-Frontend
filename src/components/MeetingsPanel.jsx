@@ -133,9 +133,13 @@ const MeetingsPanel = () => {
     try {
       setJoiningMeetingId(meeting._id);
 
-      window.open(meeting.meetingLink, "_blank");
+      const meetingTab = window.open(meeting.meetingLink, "_blank");
 
-      toast.success("Joining meeting...");
+      if (meetingTab) {
+        toast.success("Joining meeting...");
+      } else {
+        toast.error("Popup blocked. Please allow popups for this site.");
+      }
     } catch (err) {
       console.error(err);
 

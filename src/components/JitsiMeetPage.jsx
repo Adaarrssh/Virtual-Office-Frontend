@@ -22,11 +22,19 @@ const JitsiMeetPage = () => {
     const api = new window.JitsiMeetExternalAPI(domain, options);
 
     api.addListener("videoConferenceLeft", () => {
-      navigate("/dashboard");
+      api.dispose();
+
+      if (window.opener) {
+        window.close();
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     });
 
     return () => {
-      api.dispose();
+      if (api) {
+        api.dispose();
+      }
     };
   }, [roomId, navigate]);
 
