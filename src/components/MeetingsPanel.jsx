@@ -11,6 +11,7 @@ const MeetingsPanel = () => {
   const [creatingMeeting, setCreatingMeeting] = useState(false);
   const [deletingMeetingId, setDeletingMeetingId] = useState(null);
   const [joiningMeetingId, setJoiningMeetingId] = useState(null);
+  const [endingMeetingId, setEndingMeetingId] = useState(null);
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
 
@@ -114,7 +115,20 @@ const MeetingsPanel = () => {
       setDeletingMeetingId(null);
     }
   };
+  const handleEndMeeting = async (id) => {
+    try {
+      setEndingMeetingId(id);
+      await API.patch(`/meetings/${id}/end`);
+      await fetchMeetings();
+      toast.success("Meeting ended successfully");
+    } catch (err) {
+      console.error(err);
 
+      toast.error(err?.response?.data?.message || "Unable to end meeting");
+    } finally {
+      setEndingMeetingId(null);
+    }
+  };
   const handleJoinMeeting = async (meeting) => {
     try {
       setJoiningMeetingId(meeting._id);
@@ -133,18 +147,31 @@ const MeetingsPanel = () => {
 
   const getStatus = (time) => {
     const now = new Date();
+
     const start = new Date(time);
+
     const end = new Date(start.getTime() + 60 * 60 * 1000);
 
-    if (now >= new Date(start.getTime() - 2 * 60 * 1000) && now <= end) {
-      return "live";
-    }
-
-    if (now > end) {
+    if (now >= end) {
       return "completed";
     }
 
+    if (now >= start) {
+      return "live";
+    }
+
     return "upcoming";
+  };
+  const canJoinMeeting = (meetingTime) => {
+    const now = new Date();
+
+    const start = new Date(meetingTime);
+
+    const joinTime = new Date(start.getTime() - 2 * 60 * 1000);
+
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+    return now >= joinTime && now <= end;
   };
 
   return (
@@ -152,7 +179,12 @@ const MeetingsPanel = () => {
       <div className="header">
         <h2>Meetings</h2>
 
-        <button className="add-btn" onClick={() => setShowForm(!showForm)}>
+        <button
+          type="button"
+          type="button"
+          className="add-btn"
+          onClick={() => setShowForm(!showForm)}
+        >
           {showForm ? "✕" : "+"}
         </button>
       </div>
@@ -222,7 +254,11 @@ const MeetingsPanel = () => {
             </select>
           )}
 
-          <button className="create-btn" disabled={creatingMeeting}>
+          <button
+            type="button"
+            className="create-btn"
+            disabled={creatingMeeting}
+          >
             {creatingMeeting ? "Creating..." : "Create Meeting"}
           </button>
         </form>
@@ -254,30 +290,64 @@ const MeetingsPanel = () => {
                   })}
                 </p>
 
-                <span className={`status ${status}`}>{status}</span>
+                <span
+                  className={`status ${
+                    m.status === "completed" ? "completed" : status
+                  }`}
+                >
+                  {m.status === "completed" ? "completed" : status}
+                </span>
               </div>
 
               <div className="card-actions">
                 <button
+                  type="button"
                   className={`join-btn ${
-                    status === "completed" ? "disabled" : ""
+                    m.status === "completed" || status === "completed"
+                      ? "disabled"
+                      : ""
                   }`}
                   disabled={
-                    status === "completed" || joiningMeetingId === m._id
+                    m.status === "completed" ||
+                    status === "completed" ||
+                    !canJoinMeeting(m.time) ||
+                    joiningMeetingId === m._id
                   }
                   onClick={() => handleJoinMeeting(m)}
                 >
-                  {joiningMeetingId === m._id ? "Joining..." : "Join"}
+                  {joiningMeetingId === m._id
+                    ? "Joining..."
+                    : m.status === "completed" || status === "completed"
+                      ? "Ended"
+                      : canJoinMeeting(m.time)
+                        ? "Join"
+                        : "Available 2 min before"}
                 </button>
 
                 {m.createdBy === user._id && (
-                  <button
-                    className="delete-btn"
-                    disabled={deletingMeetingId === m._id}
-                    onClick={() => handleDelete(m._id)}
-                  >
-                    {deletingMeetingId === m._id ? "Deleting..." : "Delete"}
-                  </button>
+                  <>
+                    {m.status !== "completed" && (
+                      <button
+                        type="button"
+                        className="end-btn"
+                        disabled={endingMeetingId === m._id}
+                        onClick={() => handleEndMeeting(m._id)}
+                      >
+                        {endingMeetingId === m._id
+                          ? "Ending..."
+                          : "End Meeting"}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="delete-btn"
+                      disabled={deletingMeetingId === m._id}
+                      onClick={() => handleDelete(m._id)}
+                    >
+                      {deletingMeetingId === m._id ? "Deleting..." : "Delete"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>

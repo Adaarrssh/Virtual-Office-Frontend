@@ -80,3 +80,15 @@
     opacity: 1;
   }
 }
+.end-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.end-btn:hover {
+  background: #b91c1c;
+}
