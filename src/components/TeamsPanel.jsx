@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { io } from "socket.io-client";
 import ChatWindow from "./ChatWindow";
 import "../styles/dashboard.css";
 import API from "../api";
@@ -6,6 +7,10 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
   const [members, setMembers] = useState([]);
   const [chatUser, setChatUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const socketRef = useRef(null);
+
+  const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user")) || {};
 
   useEffect(() => {
@@ -25,7 +30,27 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
 
     fetchTeam();
   }, []);
+  useEffect(() => {
+    if (!user?._id || !token) return;
 
+    const SOCKET_URL = API.defaults.baseURL.replace("/api", "");
+
+    const socket = io(SOCKET_URL, {
+      auth: { token },
+      transports: ["websocket"],
+    });
+
+    socketRef.current = socket;
+
+    socket.on("onlineUsers", (users) => {
+      setOnlineUsers(users);
+    });
+
+    return () => {
+      socket.off("onlineUsers");
+      socket.disconnect();
+    };
+  }, [user?._id, token]);
   const displayMembers = limit ? members.slice(0, 2) : members;
 
   if (loading) {
@@ -46,7 +71,7 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
 
         {displayMembers.map((member) => {
           const isManager = member.role === "manager";
-
+          const isOnline = onlineUsers.includes(member._id);
           const avatar = member.profileUrl
             ? member.profileUrl
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -63,7 +88,18 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
                     {member.name} {isManager && "(Manager)"}
                   </strong>
                   <br />
-                  <small>{member.email}</small>
+                  <>
+                    <small>{member.email}</small>
+                    <br />
+                    <small
+                      style={{
+                        color: isOnline ? "#16a34a" : "#9ca3af",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {isOnline ? "🟢 Online" : "⚪ Offline"}
+                    </small>
+                  </>
                 </div>
               </div>
 

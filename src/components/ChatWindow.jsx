@@ -11,7 +11,7 @@ const ChatWindow = ({ receiver, onClose }) => {
 
   const [isConnected, setIsConnected] = useState(false);
   const [sending, setSending] = useState(false);
-
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -47,15 +47,30 @@ const ChatWindow = ({ receiver, onClose }) => {
     });
 
     socket.on("receiveMessage", (msg) => {
+      if (!receiver) return;
+
+      const senderId =
+        typeof msg.sender === "object" ? msg.sender._id : msg.sender;
+
+      const receiverId =
+        typeof msg.receiver === "object" ? msg.receiver._id : msg.receiver;
+
       if (
-        receiver &&
-        (msg.sender?._id === receiver._id || msg.receiver?._id === receiver._id)
+        (senderId === receiver._id && receiverId === user._id) ||
+        (senderId === user._id && receiverId === receiver._id)
       ) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
       }
     });
-
+    socket.on("onlineUsers", (users) => {
+      setOnlineUsers(users);
+    });
     return () => {
+      socket.off("receiveMessage");
+      socket.off("onlineUsers");
       socket.disconnect();
     };
   }, [user?._id, token, receiver]);
@@ -108,7 +123,9 @@ const ChatWindow = ({ receiver, onClose }) => {
       setSending(false);
     }
   };
-
+  const isReceiverOnline = receiver
+    ? onlineUsers.includes(receiver._id)
+    : false;
   if (!receiver) return null;
 
   if (isMinimized) {
@@ -131,11 +148,11 @@ const ChatWindow = ({ receiver, onClose }) => {
 
             <small
               style={{
-                color: "#16a34a",
+                color: isReceiverOnline ? "#16a34a" : "#9ca3af",
                 fontWeight: "600",
               }}
             >
-              Chat
+              {isReceiverOnline ? "🟢 Online" : "⚪ Offline"}
             </small>
           </div>
 
