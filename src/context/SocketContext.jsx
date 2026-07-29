@@ -26,10 +26,12 @@ export const SocketProvider = ({ children }) => {
 
     newSocket.on("connect", () => {
       console.log("✅ Socket Connected:", newSocket.id);
+      console.log("👤 Current User:", user);
       newSocket.emit("joinRoom", user._id);
     });
 
     newSocket.on("onlineUsers", (users) => {
+      console.log("🟢 ONLINE USERS:", users);
       setOnlineUsers(users);
     });
 
@@ -42,7 +44,7 @@ export const SocketProvider = ({ children }) => {
     });
 
     newSocket.on("connect_error", (err) => {
-      console.error("Socket connection error:", err);
+      console.error("❌ CONNECT ERROR:", err.message);
     });
 
     return () => {
