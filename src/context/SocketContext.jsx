@@ -7,6 +7,7 @@ const SocketContext = createContext(null);
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [popup, setPopup] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -24,6 +25,7 @@ export const SocketProvider = ({ children }) => {
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
+      console.log("✅ Socket Connected:", newSocket.id);
       newSocket.emit("joinRoom", user._id);
     });
 
@@ -31,10 +33,25 @@ export const SocketProvider = ({ children }) => {
       setOnlineUsers(users);
     });
 
+    newSocket.on("meetingCreated", (data) => {
+      setPopup(data);
+
+      setTimeout(() => {
+        setPopup(null);
+      }, 4000);
+    });
+
+    newSocket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+    });
+
     return () => {
       newSocket.off("onlineUsers");
+      newSocket.off("meetingCreated");
       newSocket.disconnect();
       setSocket(null);
+      setOnlineUsers([]);
+      setPopup(null);
     };
   }, []);
 
@@ -43,6 +60,7 @@ export const SocketProvider = ({ children }) => {
       value={{
         socket,
         onlineUsers,
+        popup,
       }}
     >
       {children}
