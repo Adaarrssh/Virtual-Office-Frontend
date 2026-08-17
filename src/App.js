@@ -10,7 +10,7 @@ import "./styles/meeting.css";
 
 function AppContent() {
   const [role, setRole] = useState(null);
-  const { popup } = useSocket();
+  const { popup, disconnectSocket } = useSocket();
 
   useEffect(() => {
     try {
@@ -37,6 +37,7 @@ function AppContent() {
   };
 
   const handleLogout = () => {
+    disconnectSocket();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("activeSection");

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSocket } from "../context/SocketContext";
 import { toast } from "react-hot-toast";
 import {
   LogIn,
@@ -13,6 +14,7 @@ import API from "../api";
 import "../styles/login.css";
 
 const LoginPage = ({ onSuccessfulLogin }) => {
+  const { connectSocket } = useSocket();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -49,6 +51,7 @@ const LoginPage = ({ onSuccessfulLogin }) => {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      connectSocket();
       toast.success(`Welcome back, ${data.user.name}!`);
       if (data.user?.role) {
         onSuccessfulLogin(data.user.role);
