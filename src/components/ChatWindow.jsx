@@ -9,10 +9,19 @@ const ChatWindow = ({ receiver, onClose }) => {
   const [newMessage, setNewMessage] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
   const [sending, setSending] = useState(false);
-  const { socket, onlineUsers } = useSocket();
+
+  const { socket, onlineUsers, setActiveChat, markChatAsRead } = useSocket();
+
   const messagesEndRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user")) || {};
+
+  useEffect(() => {
+    if (!receiver?._id) return;
+
+    setActiveChat(receiver._id);
+    markChatAsRead(receiver._id);
+  }, [receiver?._id, setActiveChat, markChatAsRead]);
 
   useEffect(() => {
     if (!socket || !receiver) return;
@@ -29,17 +38,25 @@ const ChatWindow = ({ receiver, onClose }) => {
         (senderId === user._id && receiverId === receiver._id)
       ) {
         setMessages((prev) => {
-          if (prev.some((m) => m._id === msg._id)) return prev;
+          if (prev.some((m) => m._id === msg._id)) {
+            return prev;
+          }
+
           return [...prev, msg];
         });
+
+        if (String(senderId) === String(receiver._id) && !isMinimized) {
+          markChatAsRead(receiver._id);
+        }
       }
     };
 
     socket.on("receiveMessage", handleReceiveMessage);
+
     return () => {
       socket.off("receiveMessage", handleReceiveMessage);
     };
-  }, [socket, receiver, user._id]);
+  }, [socket, receiver, user._id, isMinimized, markChatAsRead]);
 
   useEffect(() => {
     if (!receiver?._id) return;
@@ -47,6 +64,7 @@ const ChatWindow = ({ receiver, onClose }) => {
     const fetchHistory = async () => {
       try {
         const res = await API.get(`/messages/${receiver._id}`);
+
         setMessages(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error(err);
@@ -83,23 +101,37 @@ const ChatWindow = ({ receiver, onClose }) => {
       setNewMessage("");
     } catch (err) {
       console.error(err);
-
       toast.error("Failed to send message");
     } finally {
       setSending(false);
     }
   };
+
+  const handleMinimize = () => {
+    setIsMinimized(true);
+    setActiveChat(null);
+  };
+
+  const handleClose = () => {
+    setActiveChat(null);
+    onClose();
+  };
+
+  const handleRestore = () => {
+    setIsMinimized(false);
+    setActiveChat(receiver._id);
+    markChatAsRead(receiver._id);
+  };
+
   const isReceiverOnline = receiver
     ? onlineUsers.includes(receiver._id)
     : false;
+
   if (!receiver) return null;
 
   if (isMinimized) {
     return (
-      <div
-        className="minimized-chat-window"
-        onClick={() => setIsMinimized(false)}
-      >
+      <div className="minimized-chat-window" onClick={handleRestore}>
         💬 {receiver.name}
       </div>
     );
@@ -123,9 +155,9 @@ const ChatWindow = ({ receiver, onClose }) => {
           </div>
 
           <div>
-            <button onClick={() => setIsMinimized(true)}>−</button>
+            <button onClick={handleMinimize}>−</button>
 
-            <button onClick={onClose}>×</button>
+            <button onClick={handleClose}>×</button>
           </div>
         </div>
 

@@ -3,11 +3,15 @@ import { useSocket } from "../context/SocketContext";
 import ChatWindow from "./ChatWindow";
 import "../styles/dashboard.css";
 import API from "../api";
+
 const TeamsPanel = ({ showActions = true, limit = false }) => {
   const [members, setMembers] = useState([]);
   const [chatUser, setChatUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { onlineUsers } = useSocket();
+
+  const { onlineUsers, chatToOpen, clearChatToOpen, setActiveChat } =
+    useSocket();
+
   const user = JSON.parse(localStorage.getItem("user")) || {};
 
   useEffect(() => {
@@ -27,6 +31,32 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
 
     fetchTeam();
   }, []);
+
+  useEffect(() => {
+    if (!chatToOpen || members.length === 0) return;
+
+    const member = members.find(
+      (item) => String(item._id) === String(chatToOpen),
+    );
+
+    if (member) {
+      setChatUser(member);
+      setActiveChat(member._id);
+    }
+
+    clearChatToOpen();
+  }, [chatToOpen, members, clearChatToOpen, setActiveChat]);
+
+  const handleOpenChat = (member) => {
+    setChatUser(member);
+    setActiveChat(member._id);
+  };
+
+  const handleCloseChat = () => {
+    setChatUser(null);
+    setActiveChat(null);
+  };
+
   const displayMembers = limit ? members.slice(0, 2) : members;
 
   if (loading) {
@@ -48,6 +78,7 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
         {displayMembers.map((member) => {
           const isManager = member.role === "manager";
           const isOnline = onlineUsers.includes(member._id);
+
           const avatar = member.profileUrl
             ? member.profileUrl
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(
@@ -63,33 +94,33 @@ const TeamsPanel = ({ showActions = true, limit = false }) => {
                   <strong>
                     {member.name} {isManager && "(Manager)"}
                   </strong>
+
                   <br />
-                  <>
-                    <small>{member.email}</small>
-                    <br />
-                    <small
-                      style={{
-                        color: isOnline ? "#16a34a" : "#9ca3af",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {isOnline ? "🟢 Online" : "⚪ Offline"}
-                    </small>
-                  </>
+
+                  <small>{member.email}</small>
+
+                  <br />
+
+                  <small
+                    style={{
+                      color: isOnline ? "#16a34a" : "#9ca3af",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {isOnline ? "🟢 Online" : "⚪ Offline"}
+                  </small>
                 </div>
               </div>
 
               {member._id !== user?._id && (
-                <button onClick={() => setChatUser(member)}>Chat</button>
+                <button onClick={() => handleOpenChat(member)}>Chat</button>
               )}
             </li>
           );
         })}
       </ul>
 
-      {chatUser && (
-        <ChatWindow receiver={chatUser} onClose={() => setChatUser(null)} />
-      )}
+      {chatUser && <ChatWindow receiver={chatUser} onClose={handleCloseChat} />}
     </div>
   );
 };
