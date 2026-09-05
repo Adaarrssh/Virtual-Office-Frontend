@@ -247,7 +247,7 @@ const LoginPage = ({ onSuccessfulLogin }) => {
                 </p>
 
                 <p>
-                  Password: <b>123443</b>
+                  Password: <b>Raj@12345</b>
                 </p>
               </div>
 
