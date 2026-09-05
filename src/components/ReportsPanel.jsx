@@ -33,7 +33,10 @@ const ReportsPanel = () => {
         : meetingsRes.data?.meetings || [];
 
       setTasks(taskData);
-      setEmployees(teamData);
+      const employeeData = teamData.filter(
+        (member) => member.role === "employee",
+      );
+      setEmployees(employeeData);
       setMeetings(meetingData);
     } catch (error) {
       console.error("Reports fetch error:", error);

@@ -754,27 +754,23 @@ body {
 }
 
 .report-card {
-  background-color: #ffffff;
-  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  display: flex;
-  flex-direction: column;
-  transition:
-    transform 0.3s ease-in-out,
-    box-shadow 0.3s ease-in-out;
+  padding: 16px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.06);
 }
 
 .report-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.06);
 }
 
 .report-card h3 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 15px;
+  margin: 0 0 4px;
+  font-size: 17px;
 }
 
 .progress-bar-container {
@@ -1165,11 +1161,19 @@ body {
   margin: 0 0 14px;
   font-size: 17px;
 }
-
-.report-card p {
-  margin: 10px 0;
+.report-card small {
+  display: block;
+  margin-bottom: 14px;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-card p {
+  margin: 9px 0;
+  color: #6b7280;
+  font-size: 13px;
 }
 
 /* ============================= */
@@ -1196,11 +1200,11 @@ body {
 /* ============================= */
 
 .report-metrics {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 5px;
-  font-size: 13px;
-  margin-top: 12px;
+  font-size: 12px;
+  margin-top: 10px;
 }
 
 /* ============================= */
@@ -1209,14 +1213,15 @@ body {
 
 .report-card button,
 .attention-card button {
-  margin-top: 14px;
-  padding: 8px 14px;
+  width: 100%;
+  margin-top: 13px;
+  padding: 8px 12px;
   border: none;
   border-radius: 7px;
   background: #4f46e5;
   color: white;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -1298,9 +1303,14 @@ body {
 /* RESPONSIVE */
 /* ============================= */
 
-@media (max-width: 768px) {
-  .reports-panel {
-    padding: 16px;
+@media (max-width: 1000px) {
+  .team-performance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (max-width: 650px) {
+    .team-performance-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   .report-summary-grid {
@@ -1308,7 +1318,9 @@ body {
   }
 
   .team-performance-grid {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
   }
 
   .attention-card {
